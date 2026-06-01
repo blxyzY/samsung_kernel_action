@@ -4,15 +4,15 @@ on:
     inputs:
       REPO:
         description: 'Kernel repository'
-        default: 'samsungexynos850/android_kernel_samsung_exynos850'
+        default: 'rsuntk/tmp_exynos850'
         required: true
       BRANCH:
         description: 'Kernel branch'
-        default: 'lineage-23.2'
+        default: 'deprecated/android-4.19-stable'
         required: true
       DEVICE_TARGET:
         description: 'Target device to build'
-        default: 'a21snsxx'
+        default: 'a12snsxx'
         required: true
       KSU:
         description: 'Add KernelSU support'
@@ -50,7 +50,7 @@ jobs:
       id: cache-toolchain
       uses: actions/cache@v5
       with:
-        path: ~/clang-21
+        path: ~/clang-12
         key: llvm-21-aosp
 
     - name: Cache ccache
