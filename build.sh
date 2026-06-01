@@ -123,10 +123,19 @@ esac
 # --- Build Environment ---
 export KBUILD_BUILD_USER=$USER
 export KBUILD_BUILD_HOST=$HOSTNAME
-export PATH="$TC_DIR/bin:$PATH"
-export LD_LIBRARY_PATH="$TC_DIR/lib"
-export LLVM_IAS=1
-export LLVM=1
+#export PATH="$TC_DIR/bin:$PATH"
+#export LD_LIBRARY_PATH="$TC_DIR/lib"
+#export LLVM_IAS=1
+#export LLVM=1
+
+## WORKAROUND
+git clone https://github.com/rsuplaygrnd/toolchains --depth=1 --single-branch -b androidcc-4.9 $HOME/androidcc
+export CROSS_COMPILE=$HOME/androidcc/bin/aarch64-linux-android-
+export CLANG_TRIPLE=aarch64-linux-gnu-
+export CC=$TC_DIR/bin/clang
+export LD=$TC_DIR/bin/ld.lld
+## END WORKAROUND
+
 msg "KCFLAGS=-w is $KCFLAGS_W"
 [ "$KCFLAGS_W" = "true" ] && export KCFLAGS=-w
 DEFCONFIG="exynos850-${DEVICE_TARGET}_defconfig"

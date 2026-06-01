@@ -4,13 +4,13 @@
 ### AnyKernel setup
 # global properties
 properties() { '
-kernel.string=Atlas Test Build (not official)
-do.devicecheck=1
+kernel.string=Hirayuuki Test Build (not official)
+do.devicecheck=0
 do.modules=0
 do.systemless=1
 do.cleanup=1
 do.cleanuponabort=0
-device.name1=a21s
+device.name1=a12s
 device.name2=
 device.name3=
 device.name4=
