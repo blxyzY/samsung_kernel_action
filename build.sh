@@ -10,7 +10,6 @@ HOSTNAME="kernel-worker"
 DEVICE_TARGET=${DEVICE_TARGET:-"a12snsxx"}
 TC_DIR="$HOME/clang-12"
 OUT_DIR="$(pwd)/out"
-COMP_LOG="$OUT_DIR/compilation.log"
 KCFLAGS_W=${KCFLAGS_W:-"false"}
 
 # Colors for output
@@ -153,8 +152,7 @@ fi
 mkdir -p "$OUT_DIR"
 msg "Starting compilation for $DEVICE_TARGET..."
 make $BUILD_FLAGS $DEFCONFIG
-make $BUILD_FLAGS | tee -a $COMP_LOG
-send_telegram "$COMP_LOG" "$(md5sum $COMP_LOG | cut -d' ' -f1)" "$SECONDS"
+make $BUILD_FLAGS
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ANYKERNEL_DIR="$ROOT_DIR/external/anykernel3"
