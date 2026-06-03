@@ -50,8 +50,8 @@ jobs:
       id: cache-toolchain
       uses: actions/cache@v5
       with:
-        path: ~/clang-12
-        key: llvm-12-aosp
+        path: ~/clang-21
+        key: llvm-21-aosp
 
     - name: Cache ccache
       uses: actions/cache@v5
