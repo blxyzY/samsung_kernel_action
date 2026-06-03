@@ -8,7 +8,7 @@ SECONDS=0
 USER="rsuntk"
 HOSTNAME="kernel-worker"
 DEVICE_TARGET=${DEVICE_TARGET:-"a12snsxx"}
-TC_DIR="$HOME/clang-12"
+TC_DIR="$HOME/clang-21"
 OUT_DIR="$(pwd)/out"
 KCFLAGS_W=${KCFLAGS_W:-"false"}
 
@@ -60,14 +60,14 @@ setup_deps() {
 
 # --- Toolchain Setup ---
 _setup_toolchain() {
-    #msg "Downloading AOSP-LLVM 21.0.0..."
-    #wget -q https://www.kernel.org/pub/tools/crosstool/files/bin/x86_64/15.2.0/x86_64-gcc-15.2.0-nolibc-aarch64-linux.tar.gz -O /tmp/gcc.tar.gz
-    #wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/d0e0a3882edb1acc193263ae98fce706e82aca38/clang-r574158.tar.gz -O /tmp/clang.tar.gz
-    git clone --depth=1 --single-branch https://github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b.git $TC_DIR
-    #[ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
-    #tar -xzf /tmp/clang.tar.gz -C "$TC_DIR"
-    #rm /tmp/clang.tar.gz
-    #msg "Toolchain extracted to $TC_DIR"
+    msg "Downloading AOSP-LLVM 21.0.0..."
+    wget -q https://www.kernel.org/pub/tools/crosstool/files/bin/x86_64/15.2.0/x86_64-gcc-15.2.0-nolibc-aarch64-linux.tar.gz -O /tmp/gcc.tar.gz
+    wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/d0e0a3882edb1acc193263ae98fce706e82aca38/clang-r574158.tar.gz -O /tmp/clang.tar.gz
+    #git clone --depth=1 --single-branch https://github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b.git $TC_DIR
+    [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
+    tar -xzf /tmp/clang.tar.gz -C "$TC_DIR"
+    rm /tmp/clang.tar.gz
+    msg "Toolchain extracted to $TC_DIR"
 }
 
 setup_toolchain() {
@@ -122,17 +122,17 @@ esac
 # --- Build Environment ---
 export KBUILD_BUILD_USER=$USER
 export KBUILD_BUILD_HOST=$HOSTNAME
-#export PATH="$TC_DIR/bin:$PATH"
-#export LD_LIBRARY_PATH="$TC_DIR/lib"
-#export LLVM_IAS=1
-#export LLVM=1
+export PATH="$TC_DIR/bin:$PATH"
+export LD_LIBRARY_PATH="$TC_DIR/lib"
+export LLVM_IAS=1
+export LLVM=1
 
 ## WORKAROUND
-git clone https://github.com/rsuplaygrnd/toolchains --depth=1 --single-branch -b androidcc-4.9 $HOME/androidcc
-export CROSS_COMPILE=$HOME/androidcc/bin/aarch64-linux-android-
-export CLANG_TRIPLE=aarch64-linux-gnu-
-export CC=$TC_DIR/bin/clang
-export LD=$TC_DIR/bin/ld.lld
+#git clone https://github.com/rsuplaygrnd/toolchains --depth=1 --single-branch -b androidcc-4.9 $HOME/androidcc
+#export CROSS_COMPILE=$HOME/androidcc/bin/aarch64-linux-android-
+#export CLANG_TRIPLE=aarch64-linux-gnu-
+#export CC=$TC_DIR/bin/clang
+#export LD=$TC_DIR/bin/ld.lld
 ## END WORKAROUND
 
 msg "KCFLAGS=-w is $KCFLAGS_W"
