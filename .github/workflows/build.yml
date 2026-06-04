@@ -93,9 +93,23 @@ jobs:
         if [ ! -d ~/.ccache ]; then
           mkdir -p ~/.ccache
         fi
-        # Handle KernelSU
+        # Handel KSU
         if [[ "$KSU" == "true" ]]; then
-          curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s ${{ inputs.KSU_BRANCH }}
+          device_defconfig="arch/arm64/configs/${{ inputs.DEVICE_TARGET }}_defconfig"
+          curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s "${{ inputs.KSU_BRANCH }}"
+          cat <<EOF >> "$device_defconfig"
+          CONFIG_KSU=y
+          CONFIG_KSU_DEBUG=n
+          CONFIG_KSU_TOOLKIT=n
+          CONFIG_KSU_EXTRAS=n
+          CONFIG_KSU_TAMPER_SYSCALL_TABLE=n
+          EOF
+          
+          # Check if the append was successful
+          if ! grep -q "CONFIG_KSU_TAMPER_SYSCALL_TABLE" "$device_defconfig"; then
+            echo "Bail! Failed to append defconfig"
+            exit 1  # This actually stops the script from continuing
+          fi
         fi
         bash ../build.sh
 
