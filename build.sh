@@ -67,8 +67,9 @@ _setup_toolchain() {
     msg "Downloading Neutron Clang 23 ..."
     wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/26052026/neutron-clang-26052026.tar.zst -O /tmp/neutron.tar.zst
     [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
-    tar -xzf /tmp/clang.tar.* -C "$TC_DIR"
-    rm /tmp/clang.tar.*
+    #tar -xzf /tmp/clang.tar.* -C "$TC_DIR"
+    #rm /tmp/clang.tar.*
+    tar -xzf /tmp/neutron.tar.zst -C "$TC_DIR"
     msg "Toolchain extracted to $TC_DIR"
 }
 
