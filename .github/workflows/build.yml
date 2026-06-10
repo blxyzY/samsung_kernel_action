@@ -4,16 +4,20 @@ on:
     inputs:
       REPO:
         description: 'Kernel repository'
-        default: 'rsuntk/tmp_exynos850'
+        default: 'https://github.com/rsuntk/android_kernel_samsung_a12s'
         required: true
       BRANCH:
         description: 'Kernel branch'
-        default: 'deprecated/android-4.19-stable'
+        default: 'android-4.19-stable'
         required: true
       DEVICE_TARGET:
         description: 'Target device to build'
         default: 'a12snsxx'
-        required: true
+        type: choice
+        options:
+          - a12snsxx
+          - a21snsxx
+          - m12nsxx
       KSU:
         description: 'Add KernelSU support'
         type: boolean
@@ -44,21 +48,14 @@ jobs:
 
     - name: Clone kernel source
       if: github.event.inputs.UPDATE_TOOLCHAIN != 'true'
-      run: git clone --depth=1 --single-branch -b ${{ github.event.inputs.BRANCH }} https://github.com/${{ github.event.inputs.REPO }} kernel_root
+      run: git clone --depth=1 --single-branch -b ${{ github.event.inputs.BRANCH }} ${{ github.event.inputs.REPO }} kernel_root
 
     - name: Cache Toolchain
       id: cache-toolchain
       uses: actions/cache@v5
       with:
-        path: ~/clang-21
-        key: llvm-21-aosp
-
-    - name: Cache ccache
-      uses: actions/cache@v5
-      with:
-        path: ~/.ccache
-        key: ccache-kernel-${{ github.sha }}
-        restore-keys: ccache-kernel-
+        path: ~/neutron-clang
+        key: neutron-clang-23
 
     - name: Prepare Dependencies
       run: chmod +x ./build.sh && bash ./build.sh --setup-deps
