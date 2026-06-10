@@ -69,7 +69,7 @@ _setup_toolchain() {
     [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
     #tar -xzf /tmp/clang.tar.* -C "$TC_DIR"
     #rm /tmp/clang.tar.*
-    tar -xzf /tmp/neutron.tar.zst -C "$TC_DIR"
+    tar -xvf /tmp/neutron.tar.zst -C "$TC_DIR"
     msg "Toolchain extracted to $TC_DIR"
 }
 
