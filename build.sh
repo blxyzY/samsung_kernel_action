@@ -11,6 +11,7 @@ DEVICE_TARGET=${DEVICE_TARGET:-"a12snsxx"}
 TC_DIR="$HOME/neutron-clang"
 OUT_DIR="$(pwd)/out"
 KCFLAGS_W=${KCFLAGS_W:-"false"}
+BUILD_STOCK=${BUILD_STOCK:-"false"}
 
 # Colors for output
 export TERM=xterm
@@ -141,6 +142,7 @@ export LLVM=1
 msg "KCFLAGS=-w is $KCFLAGS_W"
 [ "$KCFLAGS_W" = "true" ] && export KCFLAGS=-w
 DEFCONFIG="exynos850-${DEVICE_TARGET}_defconfig"
+[ "$BUILD_STOCK" = "true" ] && STOCK_DEFCONFIG="stock.config" || STOCK_DEFCONFIG=""
 
 COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "untracked")
 [ -z "$CI_ZIPNAME" ] && ZIPNAME="rsuntk_$DEVICE_TARGET-$(date '+%Y%m%d-%H%M')-$COMMIT_HASH.zip" || ZIPNAME=$CI_ZIPNAME
@@ -154,7 +156,7 @@ fi
 
 mkdir -p "$OUT_DIR"
 msg "Starting compilation for $DEVICE_TARGET..."
-make $BUILD_FLAGS $DEFCONFIG
+make $BUILD_FLAGS $DEFCONFIG $STOCK_DEFCONFIG
 make $BUILD_FLAGS
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
