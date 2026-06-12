@@ -34,6 +34,10 @@ on:
         description: 'Enable KCFLAGS=-w'
         type: boolean
         default: false
+      BUILD_STOCK:
+        description: 'Build for stock ROM'
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -67,7 +71,12 @@ jobs:
         cd kernel_root
         gitsha1=$(git rev-parse --short HEAD)
         CODENAME=$(cat ../codename)
-        echo "buildDetails=$CODENAME-${{ github.event.inputs.DEVICE_TARGET }}-$(date +%Y%m%d)_$(echo $gitsha1)-NIGHTLY" >> $GITHUB_OUTPUT
+
+        if [[ "${{ github.event.inputs.BUILD_STOCK }}" = "true" ]]; then
+          echo "buildDetails=$CODENAME-${{ github.event.inputs.DEVICE_TARGET }}-$(date +%Y%m%d)_$(echo $gitsha1)-STOCK-NIGHTLY" >> $GITHUB_OUTPUT
+        else
+          echo "buildDetails=$CODENAME-${{ github.event.inputs.DEVICE_TARGET }}-$(date +%Y%m%d)_$(echo $gitsha1)-NIGHTLY" >> $GITHUB_OUTPUT
+        fi
         echo "currDate=$(date)" >> $GITHUB_OUTPUT
 
     - name: Fetch Toolchains
@@ -81,6 +90,7 @@ jobs:
       env:
         TG_TOKEN: ${{ secrets.BOT_TOKEN }}
         TG_CHAT_ID: ${{ secrets.CHAT_ID }}
+        BUILD_STOCK: ${{ github.event.inputs.BUILD_STOCK }}
         DEVICE_TARGET: ${{ github.event.inputs.DEVICE_TARGET }}
         KSU: ${{ github.event.inputs.KSU }}
         CI_ZIPNAME: "${{ steps.buildKernel.outputs.buildDetails }}.zip"
