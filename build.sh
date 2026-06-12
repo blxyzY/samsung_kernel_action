@@ -142,7 +142,7 @@ export LLVM=1
 msg "KCFLAGS=-w is $KCFLAGS_W"
 [ "$KCFLAGS_W" = "true" ] && export KCFLAGS=-w
 DEFCONFIG="exynos850-${DEVICE_TARGET}_defconfig"
-[ "$BUILD_STOCK" = "true" ] && STOCK_DEFCONFIG="stock.config" || STOCK_DEFCONFIG=""
+[ "$BUILD_STOCK" = "true" ] && STOCK_DEFCONFIG="stockrom.config" || STOCK_DEFCONFIG=""
 
 COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "untracked")
 [ -z "$CI_ZIPNAME" ] && ZIPNAME="rsuntk_$DEVICE_TARGET-$(date '+%Y%m%d-%H%M')-$COMMIT_HASH.zip" || ZIPNAME=$CI_ZIPNAME
