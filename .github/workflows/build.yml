@@ -100,7 +100,6 @@ jobs:
         CI_ZIPNAME: "${{ steps.buildKernel.outputs.buildDetails }}.zip"
         KCFLAGS_W: "${{ github.event.inputs.KCFLAGS_W }}"
         CLANG_VERSION: ${{ github.event.inputs.CLANG_VERSION }}
-        BRANCH: ${{ github.event.inputs.BRANCH }}
       run: |
         cd kernel_root
         if [ ! -d ~/.ccache ]; then
