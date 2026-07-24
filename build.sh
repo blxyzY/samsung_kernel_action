@@ -7,7 +7,8 @@ USER="vlzdrt"
 HOSTNAME="velprjkt-lab"
 DEVICE_TARGET=${DEVICE_TARGET:-"a23nsxx"}
 DEFCONFIG=${DEFCONFIG:-"a23_eur_open_defconfig"}
-TC_DIR="$HOME/neutron-clang"
+CLANG_VERSION=${CLANG_VERSION:-"neutron-clang-23"}
+TC_DIR="$HOME/clang"
 OUT_DIR="$(pwd)/out"
 KCFLAGS_W=${KCFLAGS_W:-"false"}
 BUILD_STOCK=${BUILD_STOCK:-"false"}
@@ -65,10 +66,38 @@ setup_deps() {
 }
 
 _setup_toolchain() {
-    msg "Downloading Neutron Clang 23 ..."
-    wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/26052026/neutron-clang-26052026.tar.zst -O /tmp/neutron.tar.zst
-    [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
-    tar -xvf /tmp/neutron.tar.zst -C "$TC_DIR"
+    msg "Downloading ${CLANG_VERSION} ..."
+    
+    case "$CLANG_VERSION" in
+        "neutron-clang-23")
+            wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/26052026/neutron-clang-26052026.tar.zst -O /tmp/clang.tar.zst
+            [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
+            tar -xvf /tmp/clang.tar.zst -C "$TC_DIR"
+            rm /tmp/clang.tar.zst
+            ;;
+        "aosp-clang-23")
+            wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r602923.tar.gz -O /tmp/clang.tar.gz
+            [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
+            tar -xzf /tmp/clang.tar.gz -C "$TC_DIR"
+            rm /tmp/clang.tar.gz
+            ;;
+        "aosp-clang-22")
+            wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/9b144befdfd93b90e02c663504fb9f4b95f9faf8/clang-r596125.tar.gz -O /tmp/clang.tar.gz
+            [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
+            tar -xzf /tmp/clang.tar.gz -C "$TC_DIR"
+            rm /tmp/clang.tar.gz
+            ;;
+        "aosp-clang-21")
+            wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/d0e0a3882edb1acc193263ae98fce706e82aca38/clang-r574158.tar.gz -O /tmp/clang.tar.gz
+            [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
+            tar -xzf /tmp/clang.tar.gz -C "$TC_DIR"
+            rm /tmp/clang.tar.gz
+            ;;
+        *)
+            error "Unknown Clang version: $CLANG_VERSION"
+            ;;
+    esac
+    
     msg "Toolchain extracted to $TC_DIR"
 }
 
@@ -121,6 +150,7 @@ esac
 [ -z "$DEFCONFIG" ] && error "DEFCONFIG cannot be empty!"
 
 msg "Using defconfig: $DEFCONFIG"
+msg "Using Clang: $CLANG_VERSION"
 
 export KBUILD_BUILD_USER=$USER
 export KBUILD_BUILD_HOST=$HOSTNAME
