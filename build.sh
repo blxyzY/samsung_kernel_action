@@ -5,9 +5,9 @@ set -e
 
 # --- Configuration ---
 SECONDS=0
-USER="rsuntk"
-HOSTNAME="yukiprjkt-lab"
-DEVICE_TARGET=${DEVICE_TARGET:-"a12snsxx"}
+USER="vlzdrt"
+HOSTNAME="zdrtprjkt-lab"
+DEVICE_TARGET=${DEVICE_TARGET:-"a23nsxx"}
 TC_DIR="$HOME/neutron-clang"
 OUT_DIR="$(pwd)/out"
 KCFLAGS_W=${KCFLAGS_W:-"false"}
@@ -127,7 +127,7 @@ esac
 export KBUILD_BUILD_USER=$USER
 export KBUILD_BUILD_HOST=$HOSTNAME
 export PATH="$TC_DIR/bin:$PATH"
-export LD_LIBRARY_PATH="$TC_DIR/lib"
+export ARCH=arm64
 export LLVM_IAS=1
 export LLVM=1
 
@@ -141,7 +141,7 @@ export LLVM=1
 
 msg "KCFLAGS=-w is $KCFLAGS_W"
 [ "$KCFLAGS_W" = "true" ] && export KCFLAGS=-w
-DEFCONFIG="exynos850-${DEVICE_TARGET}_defconfig"
+DEFCONFIG="a23_eur_open_defconfig‎"
 [ "$BUILD_STOCK" = "true" ] && STOCK_DEFCONFIG="stockrom.config" || STOCK_DEFCONFIG=""
 
 COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "untracked")
