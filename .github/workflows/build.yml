@@ -25,7 +25,6 @@ on:
         type: choice
         options:
           - neutron-clang-23
-          - aosp-clang-23
           - aosp-clang-22
           - aosp-clang-21
       KSU:
