@@ -41,11 +41,11 @@ MD5: ${md5}
 Build done in ${time} minutes"
 
     msg "Uploading to Telegram..."
-    curl -s -F document=@$file "https://api.telegram.org/bot$TG_TOKEN/sendDocument" \
+    curl -s -F document=@$file \
         -F chat_id="$TG_CHAT_ID" \
+        -F caption="$msg_bar" \
         -F "disable_web_page_preview=true" \
-        -F "parse_mode=markdownv2" \
-        -F caption="$msg_bar"
+        "https://api.telegram.org/bot$TG_TOKEN/sendDocument"
     msg "Upload completed!"
 }
 
@@ -103,7 +103,7 @@ case "$1" in
     ;;
 "--clean")
     msg "Cleaning..."
-    rm -rf "$OUT_DIR" AnyKernel3
+    rm -rf "$OUT_DIR" *.zip 2>/dev/null
     make clean mrproper
     exit 0
     ;;
@@ -145,21 +145,29 @@ make $BUILD_FLAGS
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ANYKERNEL_DIR="$ROOT_DIR/external/anykernel3"
 
+if [ ! -d "$ANYKERNEL_DIR" ]; then
+    error "AnyKernel3 directory not found at: $ANYKERNEL_DIR"
+fi
+
 if [ -f "$OUT_DIR/arch/arm64/boot/Image" ]; then
     msg "Kernel compiled successfully! Packaging..."
 
-    if [ ! -d "$ANYKERNEL_DIR" ]; then
-        error "AnyKernel3 directory not found at: $ANYKERNEL_DIR"
-    fi
-
-    rm -f "$ANYKERNEL_DIR/Image"*
     cp "$OUT_DIR/arch/arm64/boot/Image" "$ANYKERNEL_DIR/"
+
+    if [ -f "$ANYKERNEL_DIR/anykernel.sh" ]; then
+        KERNEL_VER=$(make kernelversion 2>/dev/null || echo "unknown")
+        sed -i "s/kernel\.string=.*/kernel.string=$KERNEL_VER/" "$ANYKERNEL_DIR/anykernel.sh"
+        msg "Updated kernel.string to: $KERNEL_VER"
+    fi
 
     pushd "$ANYKERNEL_DIR" >/dev/null
     zip -r9 "$ROOT_DIR/$ZIPNAME" ./*
     popd >/dev/null
 
+    msg "ZIP created: $ZIPNAME"
+
     MD5_CHECK=$(md5sum "$ROOT_DIR/$ZIPNAME" | cut -d' ' -f1)
+    msg "MD5: $MD5_CHECK"
 
     send_telegram "$ROOT_DIR/$ZIPNAME" "$MD5_CHECK" "$SECONDS"
 
