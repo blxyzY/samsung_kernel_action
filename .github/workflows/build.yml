@@ -4,20 +4,16 @@ on:
     inputs:
       REPO:
         description: 'Kernel repository'
-        default: 'https://github.com/rsuntk/android_kernel_samsung_a12s'
+        default: 'https://github.com/blxyzY/android_kernel_samsung_sm6225.git'
         required: true
       BRANCH:
         description: 'Kernel branch'
-        default: 'android-4.19-stable'
+        default: ''
         required: true
       DEVICE_TARGET:
         description: 'Target device to build'
-        default: 'a12snsxx'
-        type: choice
-        options:
-          - a12snsxx
-          - a21snsxx
-          - m12nsxx
+        default: 'a23nsxx'
+        required: true
       KSU:
         description: 'Add KernelSU support'
         type: boolean
@@ -32,10 +28,6 @@ on:
         default: false
       KCFLAGS_W:
         description: 'Enable KCFLAGS=-w'
-        type: boolean
-        default: false
-      BUILD_STOCK:
-        description: 'Build for stock ROM'
         type: boolean
         default: false
 
