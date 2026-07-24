@@ -71,7 +71,7 @@ jobs:
         gitsha1=$(git rev-parse --short HEAD)
         CODENAME=$(cat ../codename 2>/dev/null || echo "kernel")
         KERNEL_VER=$(make kernelversion 2>/dev/null || echo "unknown")
-        echo "buildDetails=$CODENAME-$KERNEL_VER-$(date +%Y%m%d)_$gitsha1" >> $GITHUB_OUTPUT
+        echo "buildDetails=$CODENAME-$KERNEL_VER-$gitsha1-$(date +%Y%m%d)" >> $GITHUB_OUTPUT
         echo "currDate=$(date)" >> $GITHUB_OUTPUT
         echo "kernelVer=$KERNEL_VER" >> $GITHUB_OUTPUT
         echo "gitsha=$gitsha1" >> $GITHUB_OUTPUT
