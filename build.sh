@@ -75,12 +75,6 @@ _setup_toolchain() {
             tar -xvf /tmp/clang.tar.zst -C "$TC_DIR"
             rm /tmp/clang.tar.zst
             ;;
-        "aosp-clang-23")
-            wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r602923.tar.gz -O /tmp/clang.tar.gz
-            [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
-            tar -xzf /tmp/clang.tar.gz -C "$TC_DIR"
-            rm /tmp/clang.tar.gz
-            ;;
         "aosp-clang-22")
             wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/9b144befdfd93b90e02c663504fb9f4b95f9faf8/clang-r596125.tar.gz -O /tmp/clang.tar.gz
             [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
