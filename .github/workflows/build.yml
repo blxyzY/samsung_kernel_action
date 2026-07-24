@@ -14,6 +14,10 @@ on:
         description: 'Target device to build'
         default: 'a23nsxx'
         required: true
+      DEFCONFIG:
+        description: 'Defconfig name'
+        required: true
+        default: 'a23_eur_open_defconfig'
       KSU:
         description: 'Add KernelSU support'
         type: boolean
@@ -69,7 +73,7 @@ jobs:
       run: |
         cd kernel_root
         gitsha1=$(git rev-parse --short HEAD)
-        CODENAME=$(cat ../codename)
+        CODENAME=$(cat ../codename 2>/dev/null || echo "kernel")
         echo "buildDetails=$CODENAME-${{ github.event.inputs.DEVICE_TARGET }}-$(date +%Y%m%d)_$(echo $gitsha1)-NIGHTLY" >> $GITHUB_OUTPUT
         echo "currDate=$(date)" >> $GITHUB_OUTPUT
 
@@ -92,6 +96,7 @@ jobs:
             Repository: ${{ github.event.inputs.REPO }}
             Branch: ${{ github.event.inputs.BRANCH }}
             Device: ${{ github.event.inputs.DEVICE_TARGET }}
+            Defconfig: ${{ github.event.inputs.DEFCONFIG }}
             Date: ${{ steps.buildKernel.outputs.currDate }}
             KernelSU: ${{ github.event.inputs.KSU }}
 
@@ -101,6 +106,7 @@ jobs:
         TG_TOKEN: ${{ secrets.BOT_TOKEN }}
         TG_CHAT_ID: ${{ secrets.CHAT_ID }}
         DEVICE_TARGET: ${{ github.event.inputs.DEVICE_TARGET }}
+        DEFCONFIG: ${{ github.event.inputs.DEFCONFIG }}
         KSU: ${{ github.event.inputs.KSU }}
         CI_ZIPNAME: "${{ steps.buildKernel.outputs.buildDetails }}.zip"
         KCFLAGS_W: "${{ github.event.inputs.KCFLAGS_W }}"
@@ -109,7 +115,6 @@ jobs:
         if [ ! -d ~/.ccache ]; then
           mkdir -p ~/.ccache
         fi
-        # Handle KernelSU
         if [[ "$KSU" == "true" ]]; then
           curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s ${{ inputs.KSU_BRANCH }}
         fi
@@ -122,3 +127,4 @@ jobs:
         path: |
           kernel_root/out/arch/arm64/boot/Image.gz
           kernel_root/out/.config
+          
