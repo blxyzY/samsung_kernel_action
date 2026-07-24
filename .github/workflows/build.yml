@@ -93,6 +93,7 @@ jobs:
       env:
         TG_TOKEN: ${{ secrets.BOT_TOKEN }}
         TG_CHAT_ID: ${{ secrets.CHAT_ID }}
+        BRANCH: ${{ github.event.inputs.BRANCH }}
         DEVICE_TARGET: ${{ github.event.inputs.DEVICE_TARGET }}
         DEFCONFIG: ${{ github.event.inputs.DEFCONFIG }}
         KSU: ${{ github.event.inputs.KSU }}
