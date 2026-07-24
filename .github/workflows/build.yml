@@ -4,7 +4,7 @@ on:
     inputs:
       REPO:
         description: 'Kernel repository'
-        default: 'https://github.com/blxyzY/android_kernel_samsung_sm6225.git'
+        default: 'blxyzY/android_kernel_samsung_sm6225.git'
         required: true
       BRANCH:
         description: 'Kernel branch'
