@@ -34,12 +34,13 @@ send_telegram() {
         return
     fi
 
+    local branch="${BRANCH:-unknown}"
     local device="${DEVICE_TARGET:-unknown}"
     local defconfig="${DEFCONFIG:-unknown}"
     local date_now=$(date '+%a %b %d %H:%M:%S %Z %Y')
     local clang_ver=$($TC_DIR/bin/clang --version 2>/dev/null | head -1 | cut -d'(' -f1 | sed 's/[[:space:]]*$//' || echo "unknown")
 
-    local msg_bar="Repository: ${repo}
+    local msg_bar="Branch: ${branch}
 Device: ${device}
 Defconfig: ${defconfig}
 MD5: ${md5}
