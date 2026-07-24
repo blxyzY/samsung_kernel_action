@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
 
-# Exit immediately if a command exits with a non-zero status
 set -e
 
-# --- Configuration ---
 SECONDS=0
 USER="vlzdrt"
 HOSTNAME="zdrtprjkt-lab"
 DEVICE_TARGET=${DEVICE_TARGET:-"a23nsxx"}
+DEFCONFIG_INPUT=${DEFCONFIG:-""}
 TC_DIR="$HOME/neutron-clang"
 OUT_DIR="$(pwd)/out"
 KCFLAGS_W=${KCFLAGS_W:-"false"}
 BUILD_STOCK=${BUILD_STOCK:-"false"}
 
-# Colors for output
 export TERM=xterm
 red='\033[0;31m'
 green='\033[0;32m'
@@ -26,7 +24,6 @@ error() {
     exit 1
 }
 
-# --- Telegram Function ---
 send_telegram() {
     local file="$1"
     local md5="$2"
@@ -38,6 +35,7 @@ send_telegram() {
     fi
 
     local msg_bar="Device: ${DEVICE_TARGET}
+Defconfig: ${DEFCONFIG_USED}
 MD5: ${md5}
 
 Build done in ${time} minutes"
@@ -51,7 +49,6 @@ Build done in ${time} minutes"
     msg "Upload completed!"
 }
 
-# --- Dependencies Setup ---
 setup_deps() {
     local deps_lists=(aptitude bc bison ccache cpio curl flex git lz4 perl python-is-python3 tar wget)
     sudo apt update -y
@@ -59,17 +56,10 @@ setup_deps() {
     sudo aptitude install libssl-dev -y
 }
 
-# --- Toolchain Setup ---
 _setup_toolchain() {
-    #msg "Downloading AOSP-LLVM 21.0.0..."
-    #wget -q https://www.kernel.org/pub/tools/crosstool/files/bin/x86_64/15.2.0/x86_64-gcc-15.2.0-nolibc-aarch64-linux.tar.gz -O /tmp/gcc.tar.gz
-    #wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/d0e0a3882edb1acc193263ae98fce706e82aca38/clang-r574158.tar.gz -O /tmp/clang.tar.gz
-    #git clone --depth=1 --single-branch https://github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b.git $TC_DIR
     msg "Downloading Neutron Clang 23 ..."
     wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/26052026/neutron-clang-26052026.tar.zst -O /tmp/neutron.tar.zst
     [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
-    #tar -xzf /tmp/clang.tar.* -C "$TC_DIR"
-    #rm /tmp/clang.tar.*
     tar -xvf /tmp/neutron.tar.zst -C "$TC_DIR"
     msg "Toolchain extracted to $TC_DIR"
 }
@@ -91,19 +81,50 @@ setup_toolchain() {
     exit 0
 }
 
-# --- Regenerate savedefconfig ---
+get_defconfig() {
+    local device="$1"
+    local custom="$2"
+    
+    if [ -n "$custom" ]; then
+        echo "$custom"
+        return
+    fi
+    
+    case "$device" in
+        "a21snsxx")
+            echo "exynos850-a21snsxx_defconfig"
+            ;;
+        "a22x")
+            echo "exynos850-a22x_defconfig"
+            ;;
+        "a23"|"a23x")
+            echo "a23_eur_open_defconfig"
+            ;;
+        "a23q")
+            echo "a23q-perf_defconfig"
+            ;;
+        *)
+            local found=$(find arch/arm64/configs -name "*${device}*" 2>/dev/null | head -1)
+            if [ -n "$found" ]; then
+                echo $(basename "$found")
+            else
+                error "No defconfig found for device: $device"
+            fi
+            ;;
+    esac
+}
+
 regen_defconfig() {
     [ -z "$DEVICE_TARGET" ] && error "DEVICE_TARGET is required to regen!"
     mkdir -p "$OUT_DIR"
     msg "Generating minimal defconfig for $DEVICE_TARGET..."
 
-    make $BUILD_FLAGS "$DEFCONFIG"
+    make $BUILD_FLAGS "$DEFCONFIG_USED"
     make $BUILD_FLAGS savedefconfig
 
     msg "Done!"
 }
 
-# --- Arguments Check ---
 case "$1" in
 "--setup-deps")
     setup_deps
@@ -123,7 +144,10 @@ esac
 
 [ -z "$DEVICE_TARGET" ] && error "DEVICE_TARGET cannot be empty!"
 
-# --- Build Environment ---
+# Get defconfig
+DEFCONFIG_USED=$(get_defconfig "$DEVICE_TARGET" "$DEFCONFIG_INPUT")
+msg "Using defconfig: $DEFCONFIG_USED"
+
 export KBUILD_BUILD_USER=$USER
 export KBUILD_BUILD_HOST=$HOSTNAME
 export PATH="$TC_DIR/bin:$PATH"
@@ -131,32 +155,21 @@ export ARCH=arm64
 export LLVM_IAS=1
 export LLVM=1
 
-## WORKAROUND
-#git clone https://github.com/rsuplaygrnd/toolchains --depth=1 --single-branch -b androidcc-4.9 $HOME/androidcc
-#export CROSS_COMPILE=$HOME/androidcc/bin/aarch64-linux-android-
-#export CLANG_TRIPLE=aarch64-linux-gnu-
-#export CC=$TC_DIR/bin/clang
-#export LD=$TC_DIR/bin/ld.lld
-## END WORKAROUND
-
 msg "KCFLAGS=-w is $KCFLAGS_W"
 [ "$KCFLAGS_W" = "true" ] && export KCFLAGS=-w
-DEFCONFIG="a23_eur_open_defconfig‎"
-[ "$BUILD_STOCK" = "true" ] && STOCK_DEFCONFIG="stockrom.config" || STOCK_DEFCONFIG=""
 
 COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "untracked")
 [ -z "$CI_ZIPNAME" ] && ZIPNAME="rsuntk_$DEVICE_TARGET-$(date '+%Y%m%d-%H%M')-$COMMIT_HASH.zip" || ZIPNAME=$CI_ZIPNAME
 BUILD_FLAGS="O=$OUT_DIR ARCH=arm64 -j$(nproc --all)"
 
-# --- Build Process ---
 if [ "$1" = "--regen-defconfig" ]; then
     regen_defconfig
     exit 0
 fi
 
 mkdir -p "$OUT_DIR"
-msg "Starting compilation for $DEVICE_TARGET..."
-make $BUILD_FLAGS $DEFCONFIG $STOCK_DEFCONFIG
+msg "Starting compilation for $DEVICE_TARGET using $DEFCONFIG_USED..."
+make $BUILD_FLAGS $DEFCONFIG_USED
 make $BUILD_FLAGS
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
