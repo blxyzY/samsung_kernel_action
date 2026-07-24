@@ -4,9 +4,9 @@ set -e
 
 SECONDS=0
 USER="vlzdrt"
-HOSTNAME="zdrtprjkt-lab"
+HOSTNAME="vlzdrtprjkt-lab"
 DEVICE_TARGET=${DEVICE_TARGET:-"a23nsxx"}
-DEFCONFIG_INPUT=${DEFCONFIG:-""}
+DEFCONFIG=${DEFCONFIG:-"a23_eur_open_defconfig"}
 TC_DIR="$HOME/neutron-clang"
 OUT_DIR="$(pwd)/out"
 KCFLAGS_W=${KCFLAGS_W:-"false"}
@@ -35,7 +35,7 @@ send_telegram() {
     fi
 
     local msg_bar="Device: ${DEVICE_TARGET}
-Defconfig: ${DEFCONFIG_USED}
+Defconfig: ${DEFCONFIG}
 MD5: ${md5}
 
 Build done in ${time} minutes"
@@ -81,45 +81,12 @@ setup_toolchain() {
     exit 0
 }
 
-get_defconfig() {
-    local device="$1"
-    local custom="$2"
-    
-    if [ -n "$custom" ]; then
-        echo "$custom"
-        return
-    fi
-    
-    case "$device" in
-        "a21snsxx")
-            echo "exynos850-a21snsxx_defconfig"
-            ;;
-        "a22x")
-            echo "exynos850-a22x_defconfig"
-            ;;
-        "a23"|"a23x")
-            echo "a23_eur_open_defconfig"
-            ;;
-        "a23q")
-            echo "a23q-perf_defconfig"
-            ;;
-        *)
-            local found=$(find arch/arm64/configs -name "*${device}*" 2>/dev/null | head -1)
-            if [ -n "$found" ]; then
-                echo $(basename "$found")
-            else
-                error "No defconfig found for device: $device"
-            fi
-            ;;
-    esac
-}
-
 regen_defconfig() {
     [ -z "$DEVICE_TARGET" ] && error "DEVICE_TARGET is required to regen!"
     mkdir -p "$OUT_DIR"
     msg "Generating minimal defconfig for $DEVICE_TARGET..."
 
-    make $BUILD_FLAGS "$DEFCONFIG_USED"
+    make $BUILD_FLAGS "$DEFCONFIG"
     make $BUILD_FLAGS savedefconfig
 
     msg "Done!"
@@ -143,10 +110,9 @@ case "$1" in
 esac
 
 [ -z "$DEVICE_TARGET" ] && error "DEVICE_TARGET cannot be empty!"
+[ -z "$DEFCONFIG" ] && error "DEFCONFIG cannot be empty!"
 
-# Get defconfig
-DEFCONFIG_USED=$(get_defconfig "$DEVICE_TARGET" "$DEFCONFIG_INPUT")
-msg "Using defconfig: $DEFCONFIG_USED"
+msg "Using defconfig: $DEFCONFIG"
 
 export KBUILD_BUILD_USER=$USER
 export KBUILD_BUILD_HOST=$HOSTNAME
@@ -168,8 +134,8 @@ if [ "$1" = "--regen-defconfig" ]; then
 fi
 
 mkdir -p "$OUT_DIR"
-msg "Starting compilation for $DEVICE_TARGET using $DEFCONFIG_USED..."
-make $BUILD_FLAGS $DEFCONFIG_USED
+msg "Starting compilation for $DEVICE_TARGET using $DEFCONFIG..."
+make $BUILD_FLAGS $DEFCONFIG
 make $BUILD_FLAGS
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
