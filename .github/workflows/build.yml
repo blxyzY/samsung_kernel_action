@@ -83,23 +83,6 @@ jobs:
         UPDATE_TOOLCHAINS: ${{ github.event.inputs.UPDATE_TOOLCHAIN }}
       run: bash ./build.sh --fetch-toolchains
 
-    - name: Send Telegram notifier
-      if: github.event.inputs.UPDATE_TOOLCHAIN != 'true'
-      continue-on-error: true
-      uses: appleboy/telegram-action@master
-      with:
-          to: ${{ secrets.CHAT_ID }}
-          token: ${{ secrets.BOT_TOKEN }}
-          message: |
-            Build started!
-
-            Repository: ${{ github.event.inputs.REPO }}
-            Branch: ${{ github.event.inputs.BRANCH }}
-            Device: ${{ github.event.inputs.DEVICE_TARGET }}
-            Defconfig: ${{ github.event.inputs.DEFCONFIG }}
-            Date: ${{ steps.buildKernel.outputs.currDate }}
-            KernelSU: ${{ github.event.inputs.KSU }}
-
     - name: Build Kernel
       if: github.event.inputs.UPDATE_TOOLCHAIN != 'true'
       env:
