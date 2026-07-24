@@ -4,7 +4,7 @@ set -e
 
 SECONDS=0
 USER="vlzdrt"
-HOSTNAME="zdrtprjkt-lab"
+HOSTNAME="velprjkt-lab"
 DEVICE_TARGET=${DEVICE_TARGET:-"a23nsxx"}
 DEFCONFIG=${DEFCONFIG:-"a23_eur_open_defconfig"}
 TC_DIR="$HOME/neutron-clang"
@@ -120,15 +120,12 @@ export PATH="$TC_DIR/bin:$PATH"
 export ARCH=arm64
 export LLVM_IAS=1
 export LLVM=1
-
-# ✅ TAMBAHKAN CROSS_COMPILE dan CLANG_TRIPLE
 export CROSS_COMPILE="aarch64-linux-android-"
 export CLANG_TRIPLE="aarch64-linux-gnu-"
 
 msg "KCFLAGS=-w is $KCFLAGS_W"
 [ "$KCFLAGS_W" = "true" ] && export KCFLAGS="-w"
 
-# ✅ TAMBAHKAN KCFLAGS untuk kompatibilitas
 export KCFLAGS="$KCFLAGS -Wno-error=unused-command-line-argument -Wno-error=gnu -Wno-error=register -Wno-error=unknown-attributes -Wno-error=incompatible-pointer-types -Wno-error=pedantic -Wno-error=deprecated-declarations -Wno-error=incompatible-function-pointer-types"
 
 COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "untracked")
