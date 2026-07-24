@@ -71,6 +71,9 @@ _setup_toolchain() {
     case "$CLANG_VERSION" in
         "neutron-clang-23")
             wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/26052026/neutron-clang-26052026.tar.zst -O /tmp/clang.tar.zst
+            if [ $? -ne 0 ]; then
+                wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/25052025/neutron-clang-25052025.tar.zst -O /tmp/clang.tar.zst
+            fi
             [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
             tar -xvf /tmp/clang.tar.zst -C "$TC_DIR"
             rm /tmp/clang.tar.zst
@@ -91,6 +94,10 @@ _setup_toolchain() {
             error "Unknown Clang version: $CLANG_VERSION"
             ;;
     esac
+
+    if [ ! -f "$TC_DIR/bin/clang" ]; then
+        error "Clang not found after extraction!"
+    fi
     
     msg "Toolchain extracted to $TC_DIR"
 }
