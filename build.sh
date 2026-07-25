@@ -210,10 +210,25 @@ if [ -f "$OUT_DIR/arch/arm64/boot/Image" ]; then
 
     cp "$OUT_DIR/arch/arm64/boot/Image" "$ANYKERNEL_DIR/"
 
+    cat > utsrelease.c << 'EOF'
+#include <stdio.h>
+#include "out/include/generated/utsrelease.h"
+int main() { printf("%s\n", UTS_RELEASE); return 0; }
+EOF
+    
+    UTSRELEASE=""
+    if gcc -CC utsrelease.c -o getutsrel 2>/dev/null && [ -f "./getutsrel" ]; then
+        UTSRELEASE=$(./getutsrel)
+        rm -f getutsrel utsrelease.c
+    fi
+
+    if [ -z "$UTSRELEASE" ]; then
+        UTSRELEASE=$(make kernelversion 2>/dev/null || echo "unknown")
+    fi
+
     if [ -f "$ANYKERNEL_DIR/anykernel.sh" ]; then
-        KERNEL_VER=$(make kernelversion 2>/dev/null || echo "unknown")
-        sed -i "s/kernel\.string=.*/kernel.string=$KERNEL_VER/" "$ANYKERNEL_DIR/anykernel.sh"
-        msg "Updated kernel.string to: $KERNEL_VER"
+        sed -i "s/kernel\.string=.*/kernel.string=$UTSRELEASE/" "$ANYKERNEL_DIR/anykernel.sh"
+        msg "Updated kernel.string to: $UTSRELEASE"
     fi
 
     pushd "$ANYKERNEL_DIR" >/dev/null
