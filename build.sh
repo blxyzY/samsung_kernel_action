@@ -78,7 +78,6 @@ _setup_toolchain() {
     git clone --depth=1 https://github.com/blxyzY/toolchain -b androidcc-4.9 "$GCC_DIR" 2>/dev/null || \
     git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b master "$GCC_DIR"
     
-    # Fix GCC symlink
     cd "$GCC_DIR/bin"
     if [ ! -f "aarch64-linux-android-gcc" ]; then
         ln -sf "$(ls | grep aarch64-linux-android-gcc | head -1)" aarch64-linux-android-gcc
@@ -105,7 +104,6 @@ setup_toolchain() {
     exit 0
 }
 
-# LTO Configuration
 configure_lto() {
     msg "Configuring LTO: ${LTO:-none}"
     case "${LTO:-none}" in
@@ -143,10 +141,8 @@ regen_defconfig() {
     [ -z "$DEVICE_TARGET" ] && error "DEVICE_TARGET is required to regen!"
     mkdir -p "$OUT_DIR"
     msg "Generating minimal defconfig for $DEVICE_TARGET..."
-
     make $BUILD_FLAGS "$DEFCONFIG"
     make $BUILD_FLAGS savedefconfig
-
     msg "Done!"
 }
 
@@ -199,10 +195,7 @@ fi
 mkdir -p "$OUT_DIR"
 msg "Starting compilation for $DEVICE_TARGET using $DEFCONFIG..."
 make $BUILD_FLAGS $DEFCONFIG
-
-# Configure LTO setelah defconfig
 configure_lto
-
 make $BUILD_FLAGS
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
