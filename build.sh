@@ -7,7 +7,9 @@ USER="vlzdrt"
 HOSTNAME="velprjkt-lab"
 DEVICE_TARGET=${DEVICE_TARGET:-"a23nsxx"}
 DEFCONFIG=${DEFCONFIG:-"a23_eur_open_defconfig"}
+LTO=${LTO:-"none"}
 TC_DIR="$HOME/neutron-clang"
+GCC_DIR="$HOME/androidcc"
 OUT_DIR="$(pwd)/out"
 KCFLAGS_W=${KCFLAGS_W:-"false"}
 BUILD_STOCK=${BUILD_STOCK:-"false"}
@@ -37,12 +39,14 @@ send_telegram() {
     local branch="${BRANCH:-unknown}"
     local device="${DEVICE_TARGET:-unknown}"
     local defconfig="${DEFCONFIG:-unknown}"
+    local lto="${LTO:-none}"
     local date_now=$(date '+%a %b %d %H:%M:%S %Z %Y')
     local clang_ver=$($TC_DIR/bin/clang --version 2>/dev/null | head -1 | cut -d'(' -f1 | sed 's/[[:space:]]*$//' || echo "unknown")
 
     local msg_bar="Branch: ${branch}
 Device: ${device}
 Defconfig: ${defconfig}
+LTO: ${lto}
 MD5: ${md5}
 Compiler: ${clang_ver}
 Date: ${date_now}
@@ -69,24 +73,70 @@ _setup_toolchain() {
     wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/26052026/neutron-clang-26052026.tar.zst -O /tmp/neutron.tar.zst
     [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
     tar -xvf /tmp/neutron.tar.zst -C "$TC_DIR"
-    msg "Toolchain extracted to $TC_DIR"
+    
+    msg "Downloading GCC (AndroidCC) ..."
+    git clone --depth=1 https://github.com/blxyzY/toolchain -b androidcc-4.9 "$GCC_DIR" 2>/dev/null || \
+    git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b master "$GCC_DIR"
+    
+    # Fix GCC symlink
+    cd "$GCC_DIR/bin"
+    if [ ! -f "aarch64-linux-android-gcc" ]; then
+        ln -sf "$(ls | grep aarch64-linux-android-gcc | head -1)" aarch64-linux-android-gcc
+    fi
+    cd ../..
+    
+    msg "Toolchain extracted"
 }
 
 setup_toolchain() {
     if [ "$UPDATE_TOOLCHAINS" = "true" ]; then
         msg "Cleaning up old toolchains cache.."
-        rm -rf $TC_DIR
+        rm -rf $TC_DIR $GCC_DIR
         if [ -d ~/.ccache ]; then
             rm -rf ~/.ccache
             mkdir -p ~/.ccache
         fi
     fi
-    if [ ! -d "$TC_DIR" ]; then
+    if [ ! -d "$TC_DIR" ] || [ ! -d "$GCC_DIR" ]; then
         _setup_toolchain
     else
         msg "Toolchain already exist"
     fi
     exit 0
+}
+
+# LTO Configuration
+configure_lto() {
+    msg "Configuring LTO: ${LTO:-none}"
+    case "${LTO:-none}" in
+        "thin")
+            ./scripts/config --file out/.config --disable LTO_NONE
+            ./scripts/config --file out/.config --enable LTO
+            ./scripts/config --file out/.config --enable THINLTO
+            ./scripts/config --file out/.config --enable LTO_CLANG
+            ./scripts/config --file out/.config --enable ARCH_SUPPORTS_LTO_CLANG
+            ./scripts/config --file out/.config --enable ARCH_SUPPORTS_THINLTO
+            msg "LTO: Thin mode enabled"
+            ;;
+        "full")
+            ./scripts/config --file out/.config --disable LTO_NONE
+            ./scripts/config --file out/.config --enable LTO
+            ./scripts/config --file out/.config --disable THINLTO
+            ./scripts/config --file out/.config --enable LTO_CLANG
+            ./scripts/config --file out/.config --enable ARCH_SUPPORTS_LTO_CLANG
+            ./scripts/config --file out/.config --enable ARCH_SUPPORTS_THINLTO
+            msg "LTO: Full mode enabled"
+            ;;
+        *)
+            ./scripts/config --file out/.config --enable LTO_NONE
+            ./scripts/config --file out/.config --disable LTO
+            ./scripts/config --file out/.config --disable THINLTO
+            ./scripts/config --file out/.config --disable LTO_CLANG
+            ./scripts/config --file out/.config --enable ARCH_SUPPORTS_LTO_CLANG
+            ./scripts/config --file out/.config --enable ARCH_SUPPORTS_THINLTO
+            msg "LTO: Disabled"
+            ;;
+    esac
 }
 
 regen_defconfig() {
@@ -121,14 +171,15 @@ esac
 [ -z "$DEFCONFIG" ] && error "DEFCONFIG cannot be empty!"
 
 msg "Using defconfig: $DEFCONFIG"
+msg "LTO: ${LTO:-none}"
 
 export KBUILD_BUILD_USER=$USER
 export KBUILD_BUILD_HOST=$HOSTNAME
-export PATH="$TC_DIR/bin:$PATH"
+export PATH="$TC_DIR/bin:$GCC_DIR/bin:$PATH"
 export ARCH=arm64
 export LLVM_IAS=1
 export LLVM=1
-export CROSS_COMPILE="aarch64-linux-android-"
+export CROSS_COMPILE="$GCC_DIR/bin/aarch64-linux-android-"
 export CLANG_TRIPLE="aarch64-linux-gnu-"
 
 msg "KCFLAGS=-w is $KCFLAGS_W"
@@ -148,6 +199,10 @@ fi
 mkdir -p "$OUT_DIR"
 msg "Starting compilation for $DEVICE_TARGET using $DEFCONFIG..."
 make $BUILD_FLAGS $DEFCONFIG
+
+# Configure LTO setelah defconfig
+configure_lto
+
 make $BUILD_FLAGS
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
