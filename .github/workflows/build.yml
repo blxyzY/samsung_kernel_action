@@ -18,6 +18,15 @@ on:
         description: 'Defconfig name'
         required: true
         default: ''
+      LTO:
+        description: 'Link Time Optimisation'
+        required: true
+        default: 'none'
+        type: choice
+        options:
+          - none
+          - thin
+          - full
       KSU:
         description: 'Add KernelSU support'
         type: boolean
@@ -89,6 +98,7 @@ jobs:
         TG_CHAT_ID: ${{ secrets.CHAT_ID }}
         DEVICE_TARGET: ${{ github.event.inputs.DEVICE_TARGET }}
         DEFCONFIG: ${{ github.event.inputs.DEFCONFIG }}
+        LTO: ${{ github.event.inputs.LTO }}
         KSU: ${{ github.event.inputs.KSU }}
         CI_ZIPNAME: "${{ steps.buildKernel.outputs.buildDetails }}.zip"
         KCFLAGS_W: "${{ github.event.inputs.KCFLAGS_W }}"
@@ -108,10 +118,9 @@ jobs:
           echo "CONFIG_KSU_EXTRAS=n" >> $device_defconfig
           echo "CONFIG_KSU_TAMPER_SYSCALL_TABLE=n" >> $device_defconfig
           
-          # Check if the append was successful
           if ! grep -q "CONFIG_KSU_TAMPER_SYSCALL_TABLE" "$device_defconfig"; then
             echo "Bail! Failed to append defconfig"
-            exit 1  # This actually stops the script from continuing
+            exit 1
           fi
         fi
         bash ../build.sh
