@@ -13,8 +13,6 @@ GCC_DIR="$HOME/androidcc"
 OUT_DIR="$(pwd)/out"
 KCFLAGS_W=${KCFLAGS_W:-"false"}
 BUILD_STOCK=${BUILD_STOCK:-"false"}
-USE_SUBMODULES=${USE_SUBMODULES:-"false"}  # New flag for submodule support
-KERNEL_ROOT=${KERNEL_ROOT:-"."}  # Root directory of kernel source
 
 export TERM=xterm
 red='\033[0;31m'
@@ -106,82 +104,8 @@ setup_toolchain() {
     exit 0
 }
 
-# New function to handle submodules
-init_submodules() {
-    if [ "$USE_SUBMODULES" = "true" ]; then
-        msg "Initializing submodules..."
-        cd "$KERNEL_ROOT"
-        
-        # Check if .gitmodules exists
-        if [ -f ".gitmodules" ]; then
-            msg "Found .gitmodules, initializing submodules..."
-            
-            # Initialize and update submodules
-            git submodule init || {
-                error "Failed to initialize submodules"
-            }
-            
-            git submodule update --depth=1 --recursive || {
-                error "Failed to update submodules"
-            }
-            
-            # Optional: Check specific submodule status
-            if [ -n "$SUBMODULE_PATH" ]; then
-                if [ -d "$SUBMODULE_PATH" ]; then
-                    msg "Submodule $SUBMODULE_PATH initialized successfully"
-                else
-                    error "Submodule $SUBMODULE_PATH not found after initialization"
-                fi
-            fi
-            
-            msg "Submodules initialized successfully"
-        else
-            msg "No .gitmodules found, skipping submodule initialization"
-        fi
-        
-        cd - > /dev/null
-    fi
-}
-
-# New function to handle KernelSU as submodule
-setup_ksu_submodule() {
-    if [ "$KSU" = "true" ] && [ "$USE_SUBMODULES" = "true" ]; then
-        msg "Setting up KernelSU as submodule..."
-        cd "$KERNEL_ROOT"
-        
-        # Check if KernelSU is already a submodule
-        if [ -f ".gitmodules" ] && grep -q "KernelSU" .gitmodules; then
-            msg "KernelSU found as submodule, updating..."
-            git submodule update --init --depth=1 KernelSU || {
-                error "Failed to update KernelSU submodule"
-            }
-        else
-            # Add KernelSU as submodule if not exist
-            KSU_URL="${KSU_URL:-https://github.com/blxyzY/KernelSU.git}"
-            KSU_BRANCH="${KSU_BRANCH:-main}"
-            
-            msg "Adding KernelSU as submodule from $KSU_URL ($KSU_BRANCH)"
-            git submodule add -b "$KSU_BRANCH" --depth=1 "$KSU_URL" KernelSU || {
-                error "Failed to add KernelSU submodule"
-            }
-            git submodule update --init --depth=1 KernelSU || {
-                error "Failed to update KernelSU submodule"
-            }
-        fi
-        
-        # Verify KernelSU directory exists
-        if [ ! -d "KernelSU" ]; then
-            error "KernelSU directory not found after submodule initialization"
-        fi
-        
-        cd - > /dev/null
-    fi
-}
-
 configure_lto() {
     msg "Configuring LTO: ${LTO:-none}"
-    cd "$KERNEL_ROOT"
-    
     case "${LTO:-none}" in
         "thin")
             ./scripts/config --file out/.config --disable LTO_NONE
@@ -211,18 +135,14 @@ configure_lto() {
             msg "LTO: Disabled"
             ;;
     esac
-    
-    cd - > /dev/null
 }
 
 regen_defconfig() {
     [ -z "$DEVICE_TARGET" ] && error "DEVICE_TARGET is required to regen!"
     mkdir -p "$OUT_DIR"
-    cd "$KERNEL_ROOT"
     msg "Generating minimal defconfig for $DEVICE_TARGET..."
     make $BUILD_FLAGS "$DEFCONFIG"
     make $BUILD_FLAGS savedefconfig
-    cd - > /dev/null
     msg "Done!"
 }
 
@@ -238,9 +158,7 @@ case "$1" in
 "--clean")
     msg "Cleaning..."
     rm -rf "$OUT_DIR" *.zip 2>/dev/null
-    cd "$KERNEL_ROOT"
     make clean mrproper
-    cd - > /dev/null
     exit 0
     ;;
 esac
@@ -250,24 +168,6 @@ esac
 
 msg "Using defconfig: $DEFCONFIG"
 msg "LTO: ${LTO:-none}"
-msg "Use submodules: ${USE_SUBMODULES:-false}"
-
-# Initialize submodules if enabled
-init_submodules
-
-# Setup KernelSU if enabled and using submodules
-if [ "$KSU" = "true" ]; then
-    if [ "$USE_SUBMODULES" = "true" ]; then
-        setup_ksu_submodule
-    else
-        msg "KernelSU enabled but submodules not used, using direct installation..."
-        cd "$KERNEL_ROOT"
-        curl -LSs "https://raw.githubusercontent.com/blxyzY/KernelSU/main/kernel/setup.sh" | bash -s "$KSU_BRANCH" || {
-            error "Failed to install KernelSU directly"
-        }
-        cd - > /dev/null
-    fi
-fi
 
 export KBUILD_BUILD_USER=$USER
 export KBUILD_BUILD_HOST=$HOSTNAME
@@ -283,7 +183,6 @@ msg "KCFLAGS=-w is $KCFLAGS_W"
 
 export KCFLAGS="$KCFLAGS -Wno-error=unused-command-line-argument -Wno-error=gnu -Wno-error=register -Wno-error=unknown-attributes -Wno-error=incompatible-pointer-types -Wno-error=pedantic -Wno-error=deprecated-declarations -Wno-error=incompatible-function-pointer-types"
 
-cd "$KERNEL_ROOT"
 COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "untracked")
 [ -z "$CI_ZIPNAME" ] && ZIPNAME="rsuntk_$DEVICE_TARGET-$(date '+%Y%m%d-%H%M')-$COMMIT_HASH.zip" || ZIPNAME=$CI_ZIPNAME
 BUILD_FLAGS="O=$OUT_DIR ARCH=arm64 -j$(nproc --all)"
@@ -350,5 +249,3 @@ EOF
 else
     error "Compilation failed! Image file not found."
 fi
-
-cd - > /dev/null
