@@ -27,30 +27,10 @@ on:
           - none
           - thin
           - full
-      USE_SUBMODULES:
-        description: 'Use submodules for dependencies (KernelSU, etc)'
-        type: boolean
-        default: false
-      KSU:
-        description: 'Add KernelSU support'
-        type: boolean
-        default: false
-      KSU_BRANCH:
-        description: 'KernelSU branch'
-        required: true
-        default: 'main'
-      KSU_URL:
-        description: 'KernelSU repository URL (for submodule)'
-        required: false
-        default: 'https://github.com/blxyzY/KernelSU.git'
       KCFLAGS_W:
         description: 'Enable KCFLAGS=-w'
         type: boolean
         default: true
-      UPDATE_TOOLCHAINS:
-        description: 'Force update toolchains'
-        type: boolean
-        default: false
 
 jobs:
   build:
@@ -65,29 +45,14 @@ jobs:
 
     - name: Clone kernel source
       if: github.event.inputs.UPDATE_TOOLCHAIN != 'true'
-      run: |
-        git clone --depth=1 --single-branch -b ${{ github.event.inputs.BRANCH }} https://github.com/${{ github.event.inputs.REPO }} kernel_root
-        
-        # If using submodules, also clone .gitmodules file if it exists
-        if [ "${{ github.event.inputs.USE_SUBMODULES }}" == "true" ]; then
-          cd kernel_root
-          # Check if .gitmodules exists in the repository
-          if git ls-files --error-unmatch .gitmodules 2>/dev/null; then
-            echo "Found .gitmodules in repository, submodules will be handled during build"
-          else
-            echo "No .gitmodules found in repository"
-          fi
-          cd ..
-        fi
+      run: git clone --depth=1 --single-branch -b ${{ github.event.inputs.BRANCH }} https://github.com/${{ github.event.inputs.REPO }} kernel_root
 
     - name: Cache Toolchain
       id: cache-toolchain
       uses: actions/cache@v5
       with:
         path: ~/neutron-clang
-        key: neutron-clang-23-${{ github.run_id }}
-        restore-keys: |
-          neutron-clang-23-
+        key: neutron-clang-23
 
     - name: Cache ccache
       uses: actions/cache@v5
@@ -113,9 +78,9 @@ jobs:
         echo "gitsha=$gitsha1" >> $GITHUB_OUTPUT
 
     - name: Fetch Toolchains
-      if: ${{ steps.cache-toolchain.outputs.cache-hit != 'true' || github.event.inputs.UPDATE_TOOLCHAINS == 'true' }}
+      if: ${{ steps.cache-toolchain.outputs.cache-hit != 'true' || github.event.inputs.UPDATE_TOOLCHAIN == 'true' }}
       env:
-        UPDATE_TOOLCHAINS: ${{ github.event.inputs.UPDATE_TOOLCHAINS }}
+        UPDATE_TOOLCHAINS: ${{ github.event.inputs.UPDATE_TOOLCHAIN }}
       run: bash ./build.sh --fetch-toolchains
 
     - name: Build Kernel
@@ -128,10 +93,6 @@ jobs:
         DEFCONFIG: ${{ github.event.inputs.DEFCONFIG }}
         LTO: ${{ github.event.inputs.LTO }}
         KSU: ${{ github.event.inputs.KSU }}
-        KSU_BRANCH: ${{ github.event.inputs.KSU_BRANCH }}
-        KSU_URL: ${{ github.event.inputs.KSU_URL }}
-        USE_SUBMODULES: ${{ github.event.inputs.USE_SUBMODULES }}
-        KERNEL_ROOT: "./kernel_root"
         CI_ZIPNAME: "${{ steps.buildKernel.outputs.buildDetails }}.zip"
         KCFLAGS_W: "${{ github.event.inputs.KCFLAGS_W }}"
       run: |
@@ -139,24 +100,6 @@ jobs:
         if [ ! -d ~/.ccache ]; then
           mkdir -p ~/.ccache
         fi
-        
-        # If not using submodules and KSU enabled, handle manually
-        if [[ "${{ github.event.inputs.KSU }}" == "true" ]] && [[ "${{ github.event.inputs.USE_SUBMODULES }}" != "true" ]]; then
-          device_defconfig="arch/arm64/configs/${{ inputs.DEFCONFIG }}"
-          curl -LSs "https://raw.githubusercontent.com/blxyzY/KernelSU/main/kernel/setup.sh" | bash -s "${{ inputs.KSU_BRANCH }}"
-          
-          echo "CONFIG_KSU=y" >> $device_defconfig
-          echo "CONFIG_KSU_DEBUG=n" >> $device_defconfig
-          echo "CONFIG_KSU_TOOLKIT=n" >> $device_defconfig
-          echo "CONFIG_KSU_EXTRAS=n" >> $device_defconfig
-          echo "CONFIG_KSU_TAMPER_SYSCALL_TABLE=n" >> $device_defconfig
-          
-          if ! grep -q "CONFIG_KSU_TAMPER_SYSCALL_TABLE" "$device_defconfig"; then
-            echo "Bail! Failed to append defconfig"
-            exit 1
-          fi
-        fi
-        
         bash ../build.sh
 
     - name: Upload kernel artifacts
@@ -164,6 +107,7 @@ jobs:
       with:
         name: Kernel-${{ steps.buildKernel.outputs.buildDetails }}
         path: |
-          kernel_root/out/arch/arm64/boot/Image
+          kernel_root/out/arch/arm64/boot/Image.gz
           kernel_root/out/.config
+
           
