@@ -49,10 +49,11 @@ jobs:
         BRANCH="${{ github.event.inputs.BRANCH }}"
         
         if [ -z "$BRANCH" ]; then
-          git clone --depth=1 --recursive "$REPO" kernel_root
+          git clone --depth=1 --recursive "https://github.com/$REPO" kernel_root
         else
-          git clone --depth=1 -b "$BRANCH" --recursive "$REPO" kernel_root
+          git clone --depth=1 -b "$BRANCH" --recursive "https://github.com/$REPO" kernel_root
         fi
+        
     - name: Cache Toolchain
       id: cache-toolchain
       uses: actions/cache@v5
