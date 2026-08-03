@@ -27,6 +27,14 @@ on:
           - none
           - thin
           - full
+      KSU:
+        description: 'Add KernelSU support'
+        type: boolean
+        default: false
+      KSU_BRANCH:
+        description: 'KernelSU branch'
+        required: true
+        default: 'main'
       KCFLAGS_W:
         description: 'Enable KCFLAGS=-w'
         type: boolean
@@ -45,7 +53,7 @@ jobs:
 
     - name: Clone kernel source
       if: github.event.inputs.UPDATE_TOOLCHAIN != 'true'
-      run: git clone --depth=1 --single-branch -b ${{ github.event.inputs.BRANCH }} https://github.com/${{ github.event.inputs.REPO }} kernel_root
+      run: git clone --single-branch -b ${{ github.event.inputs.BRANCH }} https://github.com/${{ github.event.inputs.REPO }} kernel_root
 
     - name: Cache Toolchain
       id: cache-toolchain
@@ -100,6 +108,22 @@ jobs:
         if [ ! -d ~/.ccache ]; then
           mkdir -p ~/.ccache
         fi
+        # Handel KSU
+        if [[ "$KSU" == "true" ]]; then
+          device_defconfig="arch/arm64/configs/${{ inputs.DEFCONFIG }}"
+          curl -LSs "https://raw.githubusercontent.com/blxyzY/KernelSU/main/kernel/setup.sh" | bash -s "${{ inputs.KSU_BRANCH }}"
+          
+          echo "CONFIG_KSU=y" >> $device_defconfig
+          echo "CONFIG_KSU_DEBUG=n" >> $device_defconfig
+          echo "CONFIG_KSU_TOOLKIT=n" >> $device_defconfig
+          echo "CONFIG_KSU_EXTRAS=n" >> $device_defconfig
+          echo "CONFIG_KSU_TAMPER_SYSCALL_TABLE=n" >> $device_defconfig
+          
+          if ! grep -q "CONFIG_KSU_TAMPER_SYSCALL_TABLE" "$device_defconfig"; then
+            echo "Bail! Failed to append defconfig"
+            exit 1
+          fi
+        fi
         bash ../build.sh
 
     - name: Upload kernel artifacts
@@ -109,5 +133,3 @@ jobs:
         path: |
           kernel_root/out/arch/arm64/boot/Image.gz
           kernel_root/out/.config
-
-          
