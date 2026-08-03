@@ -7,11 +7,14 @@ USER="vlzdrt"
 HOSTNAME="velprjkt-lab"
 DEVICE_TARGET=${DEVICE_TARGET:-"a23nsxx"}
 DEFCONFIG=${DEFCONFIG:-"a23_eur_open_defconfig"}
-CLANG_VERSION=${CLANG_VERSION:-"neutron-clang-23"}
-TC_DIR="$HOME/clang"
+LTO=${LTO:-"none"}
+TC_DIR="$HOME/neutron-clang"
+GCC_DIR="$HOME/androidcc"
 OUT_DIR="$(pwd)/out"
 KCFLAGS_W=${KCFLAGS_W:-"false"}
 BUILD_STOCK=${BUILD_STOCK:-"false"}
+USE_SUBMODULES=${USE_SUBMODULES:-"false"}  # New flag for submodule support
+KERNEL_ROOT=${KERNEL_ROOT:-"."}  # Root directory of kernel source
 
 export TERM=xterm
 red='\033[0;31m'
@@ -38,12 +41,14 @@ send_telegram() {
     local branch="${BRANCH:-unknown}"
     local device="${DEVICE_TARGET:-unknown}"
     local defconfig="${DEFCONFIG:-unknown}"
+    local lto="${LTO:-none}"
     local date_now=$(date '+%a %b %d %H:%M:%S %Z %Y')
     local clang_ver=$($TC_DIR/bin/clang --version 2>/dev/null | head -1 | cut -d'(' -f1 | sed 's/[[:space:]]*$//' || echo "unknown")
 
     local msg_bar="Branch: ${branch}
 Device: ${device}
 Defconfig: ${defconfig}
+LTO: ${lto}
 MD5: ${md5}
 Compiler: ${clang_ver}
 Date: ${date_now}
@@ -66,52 +71,34 @@ setup_deps() {
 }
 
 _setup_toolchain() {
-    msg "Downloading ${CLANG_VERSION} ..."
+    msg "Downloading Neutron Clang 23 ..."
+    wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/26052026/neutron-clang-26052026.tar.zst -O /tmp/neutron.tar.zst
+    [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
+    tar -xvf /tmp/neutron.tar.zst -C "$TC_DIR"
     
-    case "$CLANG_VERSION" in
-        "neutron-clang-23")
-            wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/26052026/neutron-clang-26052026.tar.zst -O /tmp/clang.tar.zst
-            if [ $? -ne 0 ]; then
-                wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/25052025/neutron-clang-25052025.tar.zst -O /tmp/clang.tar.zst
-            fi
-            [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
-            tar -xvf /tmp/clang.tar.zst -C "$TC_DIR"
-            rm /tmp/clang.tar.zst
-            ;;
-        "aosp-clang-22")
-            wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/9b144befdfd93b90e02c663504fb9f4b95f9faf8/clang-r596125.tar.gz -O /tmp/clang.tar.gz
-            [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
-            tar -xzf /tmp/clang.tar.gz -C "$TC_DIR"
-            rm /tmp/clang.tar.gz
-            ;;
-        "aosp-clang-21")
-            wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/d0e0a3882edb1acc193263ae98fce706e82aca38/clang-r574158.tar.gz -O /tmp/clang.tar.gz
-            [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
-            tar -xzf /tmp/clang.tar.gz -C "$TC_DIR"
-            rm /tmp/clang.tar.gz
-            ;;
-        *)
-            error "Unknown Clang version: $CLANG_VERSION"
-            ;;
-    esac
-
-    if [ ! -f "$TC_DIR/bin/clang" ]; then
-        error "Clang not found after extraction!"
+    msg "Downloading GCC (AndroidCC) ..."
+    git clone --depth=1 https://github.com/blxyzY/toolchain -b androidcc-4.9 "$GCC_DIR" 2>/dev/null || \
+    git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b master "$GCC_DIR"
+    
+    cd "$GCC_DIR/bin"
+    if [ ! -f "aarch64-linux-android-gcc" ]; then
+        ln -sf "$(ls | grep aarch64-linux-android-gcc | head -1)" aarch64-linux-android-gcc
     fi
+    cd ../..
     
-    msg "Toolchain extracted to $TC_DIR"
+    msg "Toolchain extracted"
 }
 
 setup_toolchain() {
     if [ "$UPDATE_TOOLCHAINS" = "true" ]; then
         msg "Cleaning up old toolchains cache.."
-        rm -rf $TC_DIR
+        rm -rf $TC_DIR $GCC_DIR
         if [ -d ~/.ccache ]; then
             rm -rf ~/.ccache
             mkdir -p ~/.ccache
         fi
     fi
-    if [ ! -d "$TC_DIR" ]; then
+    if [ ! -d "$TC_DIR" ] || [ ! -d "$GCC_DIR" ]; then
         _setup_toolchain
     else
         msg "Toolchain already exist"
@@ -119,14 +106,123 @@ setup_toolchain() {
     exit 0
 }
 
+# New function to handle submodules
+init_submodules() {
+    if [ "$USE_SUBMODULES" = "true" ]; then
+        msg "Initializing submodules..."
+        cd "$KERNEL_ROOT"
+        
+        # Check if .gitmodules exists
+        if [ -f ".gitmodules" ]; then
+            msg "Found .gitmodules, initializing submodules..."
+            
+            # Initialize and update submodules
+            git submodule init || {
+                error "Failed to initialize submodules"
+            }
+            
+            git submodule update --depth=1 --recursive || {
+                error "Failed to update submodules"
+            }
+            
+            # Optional: Check specific submodule status
+            if [ -n "$SUBMODULE_PATH" ]; then
+                if [ -d "$SUBMODULE_PATH" ]; then
+                    msg "Submodule $SUBMODULE_PATH initialized successfully"
+                else
+                    error "Submodule $SUBMODULE_PATH not found after initialization"
+                fi
+            fi
+            
+            msg "Submodules initialized successfully"
+        else
+            msg "No .gitmodules found, skipping submodule initialization"
+        fi
+        
+        cd - > /dev/null
+    fi
+}
+
+# New function to handle KernelSU as submodule
+setup_ksu_submodule() {
+    if [ "$KSU" = "true" ] && [ "$USE_SUBMODULES" = "true" ]; then
+        msg "Setting up KernelSU as submodule..."
+        cd "$KERNEL_ROOT"
+        
+        # Check if KernelSU is already a submodule
+        if [ -f ".gitmodules" ] && grep -q "KernelSU" .gitmodules; then
+            msg "KernelSU found as submodule, updating..."
+            git submodule update --init --depth=1 KernelSU || {
+                error "Failed to update KernelSU submodule"
+            }
+        else
+            # Add KernelSU as submodule if not exist
+            KSU_URL="${KSU_URL:-https://github.com/blxyzY/KernelSU.git}"
+            KSU_BRANCH="${KSU_BRANCH:-main}"
+            
+            msg "Adding KernelSU as submodule from $KSU_URL ($KSU_BRANCH)"
+            git submodule add -b "$KSU_BRANCH" --depth=1 "$KSU_URL" KernelSU || {
+                error "Failed to add KernelSU submodule"
+            }
+            git submodule update --init --depth=1 KernelSU || {
+                error "Failed to update KernelSU submodule"
+            }
+        fi
+        
+        # Verify KernelSU directory exists
+        if [ ! -d "KernelSU" ]; then
+            error "KernelSU directory not found after submodule initialization"
+        fi
+        
+        cd - > /dev/null
+    fi
+}
+
+configure_lto() {
+    msg "Configuring LTO: ${LTO:-none}"
+    cd "$KERNEL_ROOT"
+    
+    case "${LTO:-none}" in
+        "thin")
+            ./scripts/config --file out/.config --disable LTO_NONE
+            ./scripts/config --file out/.config --enable LTO
+            ./scripts/config --file out/.config --enable THINLTO
+            ./scripts/config --file out/.config --enable LTO_CLANG
+            ./scripts/config --file out/.config --enable ARCH_SUPPORTS_LTO_CLANG
+            ./scripts/config --file out/.config --enable ARCH_SUPPORTS_THINLTO
+            msg "LTO: Thin mode enabled"
+            ;;
+        "full")
+            ./scripts/config --file out/.config --disable LTO_NONE
+            ./scripts/config --file out/.config --enable LTO
+            ./scripts/config --file out/.config --disable THINLTO
+            ./scripts/config --file out/.config --enable LTO_CLANG
+            ./scripts/config --file out/.config --enable ARCH_SUPPORTS_LTO_CLANG
+            ./scripts/config --file out/.config --enable ARCH_SUPPORTS_THINLTO
+            msg "LTO: Full mode enabled"
+            ;;
+        *)
+            ./scripts/config --file out/.config --enable LTO_NONE
+            ./scripts/config --file out/.config --disable LTO
+            ./scripts/config --file out/.config --disable THINLTO
+            ./scripts/config --file out/.config --disable LTO_CLANG
+            ./scripts/config --file out/.config --enable ARCH_SUPPORTS_LTO_CLANG
+            ./scripts/config --file out/.config --enable ARCH_SUPPORTS_THINLTO
+            msg "LTO: Disabled"
+            ;;
+    esac
+    
+    cd - > /dev/null
+}
+
 regen_defconfig() {
     [ -z "$DEVICE_TARGET" ] && error "DEVICE_TARGET is required to regen!"
     mkdir -p "$OUT_DIR"
+    cd "$KERNEL_ROOT"
     msg "Generating minimal defconfig for $DEVICE_TARGET..."
-
     make $BUILD_FLAGS "$DEFCONFIG"
     make $BUILD_FLAGS savedefconfig
-
+    cd - > /dev/null
     msg "Done!"
 }
 
@@ -142,7 +238,9 @@ case "$1" in
 "--clean")
     msg "Cleaning..."
     rm -rf "$OUT_DIR" *.zip 2>/dev/null
+    cd "$KERNEL_ROOT"
     make clean mrproper
+    cd - > /dev/null
     exit 0
     ;;
 esac
@@ -151,15 +249,33 @@ esac
 [ -z "$DEFCONFIG" ] && error "DEFCONFIG cannot be empty!"
 
 msg "Using defconfig: $DEFCONFIG"
-msg "Using Clang: $CLANG_VERSION"
+msg "LTO: ${LTO:-none}"
+msg "Use submodules: ${USE_SUBMODULES:-false}"
+
+# Initialize submodules if enabled
+init_submodules
+
+# Setup KernelSU if enabled and using submodules
+if [ "$KSU" = "true" ]; then
+    if [ "$USE_SUBMODULES" = "true" ]; then
+        setup_ksu_submodule
+    else
+        msg "KernelSU enabled but submodules not used, using direct installation..."
+        cd "$KERNEL_ROOT"
+        curl -LSs "https://raw.githubusercontent.com/blxyzY/KernelSU/main/kernel/setup.sh" | bash -s "$KSU_BRANCH" || {
+            error "Failed to install KernelSU directly"
+        }
+        cd - > /dev/null
+    fi
+fi
 
 export KBUILD_BUILD_USER=$USER
 export KBUILD_BUILD_HOST=$HOSTNAME
-export PATH="$TC_DIR/bin:$PATH"
+export PATH="$TC_DIR/bin:$GCC_DIR/bin:$PATH"
 export ARCH=arm64
 export LLVM_IAS=1
 export LLVM=1
-export CROSS_COMPILE="aarch64-linux-android-"
+export CROSS_COMPILE="$GCC_DIR/bin/aarch64-linux-android-"
 export CLANG_TRIPLE="aarch64-linux-gnu-"
 
 msg "KCFLAGS=-w is $KCFLAGS_W"
@@ -167,6 +283,7 @@ msg "KCFLAGS=-w is $KCFLAGS_W"
 
 export KCFLAGS="$KCFLAGS -Wno-error=unused-command-line-argument -Wno-error=gnu -Wno-error=register -Wno-error=unknown-attributes -Wno-error=incompatible-pointer-types -Wno-error=pedantic -Wno-error=deprecated-declarations -Wno-error=incompatible-function-pointer-types"
 
+cd "$KERNEL_ROOT"
 COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "untracked")
 [ -z "$CI_ZIPNAME" ] && ZIPNAME="rsuntk_$DEVICE_TARGET-$(date '+%Y%m%d-%H%M')-$COMMIT_HASH.zip" || ZIPNAME=$CI_ZIPNAME
 BUILD_FLAGS="O=$OUT_DIR ARCH=arm64 -j$(nproc --all)"
@@ -179,6 +296,7 @@ fi
 mkdir -p "$OUT_DIR"
 msg "Starting compilation for $DEVICE_TARGET using $DEFCONFIG..."
 make $BUILD_FLAGS $DEFCONFIG
+configure_lto
 make $BUILD_FLAGS
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -193,10 +311,25 @@ if [ -f "$OUT_DIR/arch/arm64/boot/Image" ]; then
 
     cp "$OUT_DIR/arch/arm64/boot/Image" "$ANYKERNEL_DIR/"
 
+    cat > utsrelease.c << 'EOF'
+#include <stdio.h>
+#include "out/include/generated/utsrelease.h"
+int main() { printf("%s\n", UTS_RELEASE); return 0; }
+EOF
+    
+    UTSRELEASE=""
+    if gcc -CC utsrelease.c -o getutsrel 2>/dev/null && [ -f "./getutsrel" ]; then
+        UTSRELEASE=$(./getutsrel)
+        rm -f getutsrel utsrelease.c
+    fi
+
+    if [ -z "$UTSRELEASE" ]; then
+        UTSRELEASE=$(make kernelversion 2>/dev/null || echo "unknown")
+    fi
+
     if [ -f "$ANYKERNEL_DIR/anykernel.sh" ]; then
-        KERNEL_VER=$(make kernelversion 2>/dev/null || echo "unknown")
-        sed -i "s/kernel\.string=.*/kernel.string=$KERNEL_VER/" "$ANYKERNEL_DIR/anykernel.sh"
-        msg "Updated kernel.string to: $KERNEL_VER"
+        sed -i "s/kernel\.string=.*/kernel.string=$UTSRELEASE/" "$ANYKERNEL_DIR/anykernel.sh"
+        msg "Updated kernel.string to: $UTSRELEASE"
     fi
 
     pushd "$ANYKERNEL_DIR" >/dev/null
@@ -217,3 +350,5 @@ if [ -f "$OUT_DIR/arch/arm64/boot/Image" ]; then
 else
     error "Compilation failed! Image file not found."
 fi
+
+cd - > /dev/null
