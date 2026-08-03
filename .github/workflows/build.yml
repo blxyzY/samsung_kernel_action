@@ -44,8 +44,15 @@ jobs:
         fetch-depth: 1
 
     - name: Clone kernel source
-      run: git clone --depth=1 --single-branch -b ${{ github.event.inputs.BRANCH }} https://github.com/${{ github.event.inputs.REPO }} kernel_root
-
+      run: |
+        REPO="${{ github.event.inputs.REPO }}"
+        BRANCH="${{ github.event.inputs.BRANCH }}"
+        
+        if [ -z "$BRANCH" ]; then
+          git clone --depth=1 --recursive "$REPO" kernel_root
+        else
+          git clone --depth=1 -b "$BRANCH" --recursive "$REPO" kernel_root
+        fi
     - name: Cache Toolchain
       id: cache-toolchain
       uses: actions/cache@v5
