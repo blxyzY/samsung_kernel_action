@@ -54,13 +54,10 @@ jobs:
     - name: Clone kernel source
       if: github.event.inputs.UPDATE_TOOLCHAIN != 'true'
       run: |
-        REPO="${{ github.event.inputs.REPO }}"
-        BRANCH="${{ github.event.inputs.BRANCH }}"
-        
-        if [ -z "$BRANCH" ]; then
-          git clone --depth=1 --recursive "https://github.com/$REPO" kernel_root
+        if [ -z "${{ github.event.inputs.BRANCH }}" ]; then
+          git clone --depth=1 --recursive https://github.com/${{ github.event.inputs.REPO }} kernel_root
         else
-          git clone --depth=1 -b "$BRANCH" --recursive "https://github.com/$REPO" kernel_root
+          git clone --depth=1 --single-branch -b ${{ github.event.inputs.BRANCH }} --recursive https://github.com/${{ github.event.inputs.REPO }} kernel_root
         fi
         
     - name: Cache Toolchain
