@@ -88,7 +88,8 @@ jobs:
         gitsha1=$(git rev-parse --short HEAD)
         CODENAME=$(cat ../codename 2>/dev/null || echo "kernel")
         KERNEL_VER=$(make kernelversion 2>/dev/null || echo "unknown")
-        echo "buildDetails=$CODENAME-$KERNEL_VER-$gitsha1-$(date +%Y%m%d)" >> $GITHUB_OUTPUT
+        SELINUX_MODE=${{ github.event.inputs.SELINUX_MODE }}
+        echo "buildDetails=$CODENAME-$KERNEL_VER-$gitsha1-${SELINUX_MODE}-$(date +%Y%m%d)" >> $GITHUB_OUTPUT
         echo "currDate=$(date)" >> $GITHUB_OUTPUT
         echo "kernelVer=$KERNEL_VER" >> $GITHUB_OUTPUT
         echo "gitsha=$gitsha1" >> $GITHUB_OUTPUT
@@ -141,6 +142,5 @@ jobs:
         name: Kernel-${{ steps.buildKernel.outputs.buildDetails }}
         path: |
           kernel_root/out/arch/arm64/boot/Image.gz
-          kernel_root/out/.config        path: |
-          kernel_root/*.zip
           kernel_root/out/.config
+          
