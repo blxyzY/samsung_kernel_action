@@ -116,8 +116,10 @@ configure_selinux() {
 
     case "${SELINUX_MODE:-enforcing}" in
         "enforcing")
+            ./scripts/config --file out/.config --enable SECURITY_SELINUX
+            ./scripts/config --file out/.config --enable SECURITY_SELINUX_BOOTPARAM
             ./scripts/config --file out/.config --disable SECURITY_SELINUX_DISABLE
-            ./scripts/config --file out/.config --disable SECURITY_SELINUX_AVC_STATS
+            ./scripts/config --file out/.config --enable SECURITY_SELINUX_DEVELOP
             ./scripts/config --file out/.config --enable SECURITY_SELINUX_CHECKREQPROT_VALUE
             ./scripts/config --file out/.config --enable CONFIG_SECURITY_SELINUX_ALWAYS_ENFORCE
             ./scripts/config --file out/.config --enable CONFIG_ALWAYS_ENFORCE
@@ -126,10 +128,12 @@ configure_selinux() {
             ;;
             
         "permissive")
+            ./scripts/config --file out/.config --enable SECURITY_SELINUX
+            ./scripts/config --file out/.config --enable SECURITY_SELINUX_BOOTPARAM
             ./scripts/config --file out/.config --enable SECURITY_SELINUX_DISABLE
-            ./scripts/config --file out/.config --disable SECURITY_SELINUX_AVC_STATS
+            ./scripts/config --file out/.config --enable SECURITY_SELINUX_DEVELOP
             ./scripts/config --file out/.config --enable SECURITY_SELINUX_CHECKREQPROT_VALUE
-            ./scripts/config --file out/.config --set-val CONFIG_CMDLINE androidboot.selinux=permissive
+            ./scripts/config --file out/.config --set-str CONFIG_CMDLINE "androidboot.selinux=permissive"
             ./scripts/config --file out/.config --enable CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE
             ./scripts/config --file out/.config --enable CONFIG_ALWAYS_PERMISSIVE
             
@@ -137,7 +141,7 @@ configure_selinux() {
             ;;
             
         *)
-            msg "Unknown SELinux mode, defaulting to enforcing"
+            msg "Unknown SELinux mode: ${SELINUX_MODE}, defaulting to enforcing"
             export SELINUX_MODE="enforcing"
             configure_selinux
             return
@@ -277,12 +281,7 @@ EOF
 
     if [ -f "$ANYKERNEL_DIR/anykernel.sh" ]; then
         sed -i "s/kernel\.string=.*/kernel.string=$UTSRELEASE - SELinux: ${SELINUX_MODE}/" "$ANYKERNEL_DIR/anykernel.sh"
-        msg "Updated kernel.string to: $UTSRELEASE - SELinux: ${SELINUX_MODE}"
-    fi
-
-    if [ -f "$ANYKERNEL_DIR/anykernel.sh" ]; then
-        echo "# SELinux mode: ${SELINUX_MODE}" >> "$ANYKERNEL_DIR/anykernel.sh"
-        echo "selinux_mode=\"${SELINUX_MODE}\"" >> "$ANYKERNEL_DIR/anykernel.sh"
+        msg "Updated kernel.string to: $UTSRELEASE"
     fi
 
     pushd "$ANYKERNEL_DIR" >/dev/null
