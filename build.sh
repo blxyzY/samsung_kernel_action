@@ -13,6 +13,7 @@ GCC_DIR="$HOME/androidcc"
 OUT_DIR="$(pwd)/out"
 KCFLAGS_W=${KCFLAGS_W:-"false"}
 BUILD_STOCK=${BUILD_STOCK:-"false"}
+SELINUX_MODE=${SELINUX_MODE:-"enforcing"}
 
 export TERM=xterm
 red='\033[0;31m'
@@ -40,6 +41,7 @@ send_telegram() {
     local device="${DEVICE_TARGET:-unknown}"
     local defconfig="${DEFCONFIG:-unknown}"
     local lto="${LTO:-none}"
+    local selinux="${SELINUX_MODE:-enforcing}"
     local date_now=$(date '+%a %b %d %H:%M:%S %Z %Y')
     local clang_ver=$($TC_DIR/bin/clang --version 2>/dev/null | head -1 | cut -d'(' -f1 | sed 's/[[:space:]]*$//' || echo "unknown")
 
@@ -47,6 +49,7 @@ send_telegram() {
 Device: ${device}
 Defconfig: ${defconfig}
 LTO: ${lto}
+SELinux: ${selinux}
 MD5: ${md5}
 Compiler: ${clang_ver}
 Date: ${date_now}
@@ -102,6 +105,55 @@ setup_toolchain() {
         msg "Toolchain already exist"
     fi
     exit 0
+}
+
+configure_selinux() {
+    msg "Configuring SELinux mode: ${SELINUX_MODE:-enforcing}"
+
+    if [ ! -f "arch/arm64/configs/${DEFCONFIG}.orig" ]; then
+        cp "arch/arm64/configs/${DEFCONFIG}" "arch/arm64/configs/${DEFCONFIG}.orig"
+    fi
+
+    case "${SELINUX_MODE:-enforcing}" in
+        "enforcing")
+            ./scripts/config --file out/.config --enable SECURITY_SELINUX
+            ./scripts/config --file out/.config --enable SECURITY_SELINUX_BOOTPARAM
+            ./scripts/config --file out/.config --disable SECURITY_SELINUX_DISABLE
+            ./scripts/config --file out/.config --enable SECURITY_SELINUX_DEVELOP
+            ./scripts/config --file out/.config --disable SECURITY_SELINUX_AVC_STATS
+            ./scripts/config --file out/.config --enable SECURITY_SELINUX_CHECKREQPROT_VALUE
+            ./scripts/config --file out/.config --set-val DEFAULT_SECURITY_SELINUX_ENFORCING 1
+
+            export CMDLINE_EXTRA="selinux=1 enforcing=1"
+            msg "SELinux: Enforcing mode enabled (default)"
+            ;;
+            
+        "permissive")
+            ./scripts/config --file out/.config --enable SECURITY_SELINUX
+            ./scripts/config --file out/.config --enable SECURITY_SELINUX_BOOTPARAM
+            ./scripts/config --file out/.config --enable SECURITY_SELINUX_DISABLE
+            ./scripts/config --file out/.config --enable SECURITY_SELINUX_DEVELOP
+            ./scripts/config --file out/.config --disable SECURITY_SELINUX_AVC_STATS
+            ./scripts/config --file out/.config --enable SECURITY_SELINUX_CHECKREQPROT_VALUE
+            ./scripts/config --file out/.config --set-val DEFAULT_SECURITY_SELINUX_ENFORCING 0
+
+            export CMDLINE_EXTRA="selinux=1 enforcing=0"
+            msg "SELinux: Permissive mode enabled"
+            ;;
+            
+        *)
+            msg "Unknown SELinux mode, defaulting to enforcing"
+            export SELINUX_MODE="enforcing"
+            configure_selinux
+            return
+            ;;
+    esac
+
+    if grep -q "CONFIG_SECURITY_SELINUX=y" out/.config; then
+        msg "SELinux configuration applied successfully"
+    else
+        error "Failed to apply SELinux configuration"
+    fi
 }
 
 configure_lto() {
@@ -168,6 +220,7 @@ esac
 
 msg "Using defconfig: $DEFCONFIG"
 msg "LTO: ${LTO:-none}"
+msg "SELinux mode: ${SELINUX_MODE:-enforcing}"
 
 export KBUILD_BUILD_USER=$USER
 export KBUILD_BUILD_HOST=$HOSTNAME
@@ -184,7 +237,7 @@ msg "KCFLAGS=-w is $KCFLAGS_W"
 export KCFLAGS="$KCFLAGS -Wno-error=unused-command-line-argument -Wno-error=gnu -Wno-error=register -Wno-error=unknown-attributes -Wno-error=incompatible-pointer-types -Wno-error=pedantic -Wno-error=deprecated-declarations -Wno-error=incompatible-function-pointer-types"
 
 COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "untracked")
-[ -z "$CI_ZIPNAME" ] && ZIPNAME="rsuntk_$DEVICE_TARGET-$(date '+%Y%m%d-%H%M')-$COMMIT_HASH.zip" || ZIPNAME=$CI_ZIPNAME
+[ -z "$CI_ZIPNAME" ] && ZIPNAME="rsuntk_${SELINUX_MODE}_$DEVICE_TARGET-$(date '+%Y%m%d-%H%M')-$COMMIT_HASH.zip" || ZIPNAME=$CI_ZIPNAME
 BUILD_FLAGS="O=$OUT_DIR ARCH=arm64 -j$(nproc --all)"
 
 if [ "$1" = "--regen-defconfig" ]; then
@@ -196,6 +249,7 @@ mkdir -p "$OUT_DIR"
 msg "Starting compilation for $DEVICE_TARGET using $DEFCONFIG..."
 make $BUILD_FLAGS $DEFCONFIG
 configure_lto
+configure_selinux
 make $BUILD_FLAGS
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -203,33 +257,6 @@ ANYKERNEL_DIR="$ROOT_DIR/external/anykernel3"
 
 if [ ! -d "$ANYKERNEL_DIR" ]; then
     error "AnyKernel3 directory not found at: $ANYKERNEL_DIR"
-fi
-
-DEFCONFIG_PATH="arch/arm64/configs/$DEFCONFIG"
-
-if [ -f "$DEFCONFIG_PATH" ]; then
-    if [ "$SELINUX_CHOICE" = "permissive" ]; then
-        echo "Mengonfigurasi kernel ke SELinux Permissive..."
-        sed -i 's/CONFIG_CMDLINE=""/CONFIG_CMDLINE="androidboot.selinux=permissive"/' "$DEFCONFIG_PATH"
-        sed -i 's/# CONFIG_SECURITY_SELINUX_DEVELOP is not set/CONFIG_SECURITY_SELINUX_DEVELOP=y/' "$DEFCONFIG_PATH"
-        sed -i 's/CONFIG_SECURITY_SELINUX_ALWAYS_ENFORCE=y/# CONFIG_SECURITY_SELINUX_ALWAYS_ENFORCE is not set/' "$DEFCONFIG_PATH" 2>/dev/null || true
-        if grep -q "CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE" "$DEFCONFIG_PATH"; then
-            sed -i 's/# CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE is not set/CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE=y/' "$DEFCONFIG_PATH"
-        else
-            echo "CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE=y" >> "$DEFCONFIG_PATH"
-        fi
-        sed -i 's/CONFIG_INTEGRITY=y/# CONFIG_INTEGRITY is not set/' "$DEFCONFIG_PATH"
-        sed -i 's/CONFIG_SECURITY_DEFEX=y/# CONFIG_SECURITY_DEFEX is not set/' "$DEFCONFIG_PATH"
-        sed -i 's/CONFIG_PROCA=y/# CONFIG_PROCA is not set/' "$DEFCONFIG_PATH"
-        sed -i 's/CONFIG_FIVE=y/# CONFIG_FIVE is not set/' "$DEFCONFIG_PATH"
-    else
-        echo "Mengonfigurasi kernel ke SELinux Enforcing..."
-        sed -i 's/CONFIG_CMDLINE="androidboot.selinux=permissive"/CONFIG_CMDLINE=""/' "$DEFCONFIG_PATH"
-        sed -i 's/CONFIG_SECURITY_SELINUX_DEVELOP=y/# CONFIG_SECURITY_SELINUX_DEVELOP is not set/' "$DEFCONFIG_PATH"
-        sed -i 's/CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE=y/# CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE is not set/' "$DEFCONFIG_PATH"
-    fi
-else
-    echo "Warning: Defconfig not found at $DEFCONFIG_PATH"
 fi
 
 if [ -f "$OUT_DIR/arch/arm64/boot/Image" ]; then
@@ -254,8 +281,13 @@ EOF
     fi
 
     if [ -f "$ANYKERNEL_DIR/anykernel.sh" ]; then
-        sed -i "s/kernel\.string=.*/kernel.string=$UTSRELEASE/" "$ANYKERNEL_DIR/anykernel.sh"
-        msg "Updated kernel.string to: $UTSRELEASE"
+        sed -i "s/kernel\.string=.*/kernel.string=$UTSRELEASE - SELinux: ${SELINUX_MODE}/" "$ANYKERNEL_DIR/anykernel.sh"
+        msg "Updated kernel.string to: $UTSRELEASE - SELinux: ${SELINUX_MODE}"
+    fi
+
+    if [ -f "$ANYKERNEL_DIR/anykernel.sh" ]; then
+        echo "# SELinux mode: ${SELINUX_MODE}" >> "$ANYKERNEL_DIR/anykernel.sh"
+        echo "selinux_mode=\"${SELINUX_MODE}\"" >> "$ANYKERNEL_DIR/anykernel.sh"
     fi
 
     pushd "$ANYKERNEL_DIR" >/dev/null
@@ -273,6 +305,7 @@ EOF
 
     echo -e "\n${green}Build completed in $((SECONDS / 60)) minute(s)!${reset}"
     msg "Output Zip: $ZIPNAME (at $ROOT_DIR)"
+    msg "SELinux mode: ${SELINUX_MODE}"
 else
     error "Compilation failed! Image file not found."
 fi
