@@ -116,28 +116,23 @@ configure_selinux() {
 
     case "${SELINUX_MODE:-enforcing}" in
         "enforcing")
-            ./scripts/config --file out/.config --enable SECURITY_SELINUX
-            ./scripts/config --file out/.config --enable SECURITY_SELINUX_BOOTPARAM
             ./scripts/config --file out/.config --disable SECURITY_SELINUX_DISABLE
-            ./scripts/config --file out/.config --enable SECURITY_SELINUX_DEVELOP
             ./scripts/config --file out/.config --disable SECURITY_SELINUX_AVC_STATS
             ./scripts/config --file out/.config --enable SECURITY_SELINUX_CHECKREQPROT_VALUE
-            ./scripts/config --file out/.config --set-val DEFAULT_SECURITY_SELINUX_ENFORCING 1
-
-            export CMDLINE_EXTRA="selinux=1 enforcing=1"
+            ./scripts/config --file out/.config --enable CONFIG_SECURITY_SELINUX_ALWAYS_ENFORCE
+            ./scripts/config --file out/.config --enable CONFIG_ALWAYS_ENFORCE
+            
             msg "SELinux: Enforcing mode enabled (default)"
             ;;
             
         "permissive")
-            ./scripts/config --file out/.config --enable SECURITY_SELINUX
-            ./scripts/config --file out/.config --enable SECURITY_SELINUX_BOOTPARAM
             ./scripts/config --file out/.config --enable SECURITY_SELINUX_DISABLE
-            ./scripts/config --file out/.config --enable SECURITY_SELINUX_DEVELOP
             ./scripts/config --file out/.config --disable SECURITY_SELINUX_AVC_STATS
             ./scripts/config --file out/.config --enable SECURITY_SELINUX_CHECKREQPROT_VALUE
-            ./scripts/config --file out/.config --set-val DEFAULT_SECURITY_SELINUX_ENFORCING 0
-
-            export CMDLINE_EXTRA="selinux=1 enforcing=0"
+            ./scripts/config --file out/.config --set-val CONFIG_CMDLINE androidboot.selinux=permissive
+            ./scripts/config --file out/.config --enable CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE
+            ./scripts/config --file out/.config --enable CONFIG_ALWAYS_PERMISSIVE
+            
             msg "SELinux: Permissive mode enabled"
             ;;
             
