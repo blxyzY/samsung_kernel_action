@@ -66,30 +66,21 @@ setup_deps() {
     echo "INFO: Updating package lists..."
     sudo apt update -y || { echo "ERROR: apt update failed"; exit 1; }
     
-    echo "INFO: Installing dependencies..."
-    local deps_list=(
-        aptitude 
-        bc 
-        bison 
-        ccache 
-        cpio 
-        curl 
-        flex 
-        git 
-        libssl-dev 
-        lz4 
-        perl 
-        python-is-python3 
-        tar 
-        wget
-    )
-    
-    for dep in "${deps_list[@]}"; do
-        echo "Installing $dep..."
-        sudo apt install -y "$dep" || echo "Warning: Failed to install $dep"
+    echo "INFO: Installing dependencies (this may take a moment)..."
+
+    for i in {1..3}; do
+        if sudo apt install -y --no-install-recommends \
+            bc bison ccache cpio curl flex git libssl-dev lz4 perl python-is-python3 tar wget; then
+            echo "INFO: Dependencies installed successfully!"
+            return 0
+        else
+            echo "WARNING: Attempt $i failed, retrying..."
+            sleep 5
+        fi
     done
     
-    echo "INFO: Dependencies installation completed!"
+    echo "ERROR: Failed to install dependencies after 3 attempts"
+    exit 1
 }
 
 _setup_toolchain() {
