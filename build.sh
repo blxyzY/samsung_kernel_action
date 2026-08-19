@@ -63,24 +63,18 @@ Build done in ${time} minutes"
 
 setup_deps() {
     set -e
+    echo "INFO: Changing to faster APT mirror..."
+    sudo sed -i 's/archive.ubuntu.com/kartolo.sby.datautama.net.id/g' /etc/apt/sources.list
+    sudo sed -i 's/security.ubuntu.com/kartolo.sby.datautama.net.id/g' /etc/apt/sources.list
+    
     echo "INFO: Updating package lists..."
     sudo apt update -y || { echo "ERROR: apt update failed"; exit 1; }
     
-    echo "INFO: Installing dependencies (this may take a moment)..."
-
-    for i in {1..3}; do
-        if sudo apt install -y --no-install-recommends \
-            bc bison ccache cpio curl flex git libssl-dev lz4 perl python-is-python3 tar wget; then
-            echo "INFO: Dependencies installed successfully!"
-            return 0
-        else
-            echo "WARNING: Attempt $i failed, retrying..."
-            sleep 5
-        fi
-    done
+    echo "INFO: Installing dependencies..."
+    sudo apt install -y --no-install-recommends \
+        bc bison ccache cpio curl flex git libssl-dev lz4 perl python-is-python3 tar wget
     
-    echo "ERROR: Failed to install dependencies after 3 attempts"
-    exit 1
+    echo "INFO: Dependencies installation completed!"
 }
 
 _setup_toolchain() {
