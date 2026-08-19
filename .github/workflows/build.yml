@@ -111,7 +111,8 @@ jobs:
         # Handel KSU
         if [[ "$KSU" == "true" ]]; then
           device_defconfig="arch/arm64/configs/${{ inputs.DEFCONFIG }}"
-          curl -LSs "https://raw.githubusercontent.com/blxyzY/KernelSU/main/kernel/setup.sh" | bash -s "${{ inputs.KSU_BRANCH }}"
+          curl -LSs "https://raw.githubusercontent.com/blxyzY/KernelSU/staging/xxksu/kernel/setup.sh" | bash -s "${{ inputs.KSU_BRANCH }}"
+          rm -rf KernelSU
           git submodule add https://github.com/blxyzY/KernelSU.git KernelSU
           
           echo "CONFIG_KSU=y" >> $device_defconfig
