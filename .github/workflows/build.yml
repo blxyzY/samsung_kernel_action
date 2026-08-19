@@ -17,11 +17,11 @@ on:
       DEFCONFIG:
         description: 'Defconfig name'
         required: true
-        default: ''
+        default: 'a23_eur_open_defconfig'
       LTO:
         description: 'Link Time Optimisation'
         required: true
-        default: 'none'
+        default: 'thin'
         type: choice
         options:
           - none
@@ -30,11 +30,11 @@ on:
       KSU:
         description: 'Add KernelSU support'
         type: boolean
-        default: false
+        default: true
       KSU_BRANCH:
         description: 'KernelSU branch'
         required: true
-        default: 'main'
+        default: 'staging/xxksu'
       KCFLAGS_W:
         description: 'Enable KCFLAGS=-w'
         type: boolean
