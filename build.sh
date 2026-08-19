@@ -62,10 +62,25 @@ Build done in ${time} minutes"
 }
 
 setup_deps() {
-    local deps_lists=(aptitude bc bison ccache cpio curl flex git lz4 perl python-is-python3 tar wget)
+    set -e
+    local deps_list=(
+        aptitude 
+        bc 
+        bison 
+        ccache 
+        cpio 
+        curl 
+        flex 
+        git 
+        libssl-dev 
+        lz4 
+        perl 
+        python-is-python3 
+        tar 
+        wget
+    )
     sudo apt update -y
-    sudo apt install "${deps_lists[@]}" -y
-    sudo aptitude install libssl-dev -y
+    sudo apt install -y "${deps_list[@]}"
 }
 
 _setup_toolchain() {
