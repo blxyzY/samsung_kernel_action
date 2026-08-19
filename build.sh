@@ -63,6 +63,10 @@ Build done in ${time} minutes"
 
 setup_deps() {
     set -e
+    echo "INFO: Updating package lists..."
+    sudo apt update -y || { echo "ERROR: apt update failed"; exit 1; }
+    
+    echo "INFO: Installing dependencies..."
     local deps_list=(
         aptitude 
         bc 
@@ -79,8 +83,13 @@ setup_deps() {
         tar 
         wget
     )
-    sudo apt update -y
-    sudo apt install -y "${deps_list[@]}"
+    
+    for dep in "${deps_list[@]}"; do
+        echo "Installing $dep..."
+        sudo apt install -y "$dep" || echo "Warning: Failed to install $dep"
+    done
+    
+    echo "INFO: Dependencies installation completed!"
 }
 
 _setup_toolchain() {
