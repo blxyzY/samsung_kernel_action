@@ -36,20 +36,12 @@ send_telegram() {
         return
     fi
 
-    local branch="${BRANCH:-unknown}"
     local device="${DEVICE_TARGET:-unknown}"
-    local defconfig="${DEFCONFIG:-unknown}"
-    local lto="${LTO:-none}"
-    local date_now=$(date '+%a %b %d %H:%M:%S %Z %Y')
     local clang_ver=$($TC_DIR/bin/clang --version 2>/dev/null | head -1 | cut -d'(' -f1 | sed 's/[[:space:]]*$//' || echo "unknown")
 
-    local msg_bar="Branch: ${branch}
-Device: ${device}
-Defconfig: ${defconfig}
-LTO: ${lto}
+    local msg_bar="Device: ${device}
 MD5: ${md5}
 Compiler: ${clang_ver}
-Date: ${date_now}
 Build done in ${time} minutes"
 
     msg "Uploading to Telegram..."
