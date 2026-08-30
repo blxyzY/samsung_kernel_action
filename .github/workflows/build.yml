@@ -102,13 +102,10 @@ jobs:
     - name: Build Kernel
       if: github.event.inputs.UPDATE_TOOLCHAIN != 'true'
       env:
-        BRANCH: ${{ github.event.inputs.BRANCH }}
         TG_TOKEN: ${{ secrets.BOT_TOKEN }}
         TG_CHAT_ID: ${{ secrets.CHAT_ID }}
         DEVICE_TARGET: ${{ github.event.inputs.DEVICE_TARGET }}
-        DEFCONFIG: ${{ github.event.inputs.DEFCONFIG }}
-        LTO: ${{ github.event.inputs.LTO }}
-        KSU: ${{ github.event.inputs.KSU }}
+        SELINUX: ${{ github.event.inputs.SELINUX }}
         CI_ZIPNAME: "${{ steps.buildKernel.outputs.buildDetails }}.zip"
         KCFLAGS_W: "${{ github.event.inputs.KCFLAGS_W }}"
       run: |
