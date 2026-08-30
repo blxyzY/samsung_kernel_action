@@ -13,6 +13,7 @@ GCC_DIR="$HOME/androidcc"
 OUT_DIR="$(pwd)/out"
 KCFLAGS_W=${KCFLAGS_W:-"false"}
 BUILD_STOCK=${BUILD_STOCK:-"false"}
+SELINUX=${SELINUX:-"enforcing"}
 
 export TERM=xterm
 red='\033[0;31m'
@@ -37,9 +38,12 @@ send_telegram() {
     fi
 
     local device="${DEVICE_TARGET:-unknown}"
+    local selinux_mode="${SELINUX:-enforcing}"
     local clang_ver=$($TC_DIR/bin/clang --version 2>/dev/null | head -1 | cut -d'(' -f1 | sed 's/[[:space:]]*$//' || echo "unknown")
 
     local msg_bar="Device: ${device}
+
+SELinux: ${selinux_mode}
 MD5: ${md5}
 Compiler: ${clang_ver}
 Build done in ${time} minutes"
@@ -169,6 +173,7 @@ esac
 
 msg "Using defconfig: $DEFCONFIG"
 msg "LTO: ${LTO:-none}"
+msg "SELinux: ${SELINUX:-enforcing}"
 
 export KBUILD_BUILD_USER=$USER
 export KBUILD_BUILD_HOST=$HOSTNAME
