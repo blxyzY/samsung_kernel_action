@@ -18,6 +18,11 @@ on:
         description: '⚙️ Defconfig name'
         required: true
         default: 'a23_eur_open_defconfig'
+      ZIP_NAME:
+        description: '📦 Custom ZIP name'
+        required: false
+        default: 'SolsticeKernel-A23-'
+        type: string
       LTO:
         description: '🔗 Link Time Optimisation'
         required: true
@@ -88,7 +93,11 @@ jobs:
         gitsha1=$(git rev-parse --short HEAD)
         CODENAME=$(cat ../codename 2>/dev/null || echo "kernel")
         KERNEL_VER=$(make kernelversion 2>/dev/null || echo "unknown")
-        echo "buildDetails=$CODENAME-$KERNEL_VER-$gitsha1" >> $GITHUB_OUTPUT
+        if [ -n "${{ github.event.inputs.ZIP_NAME }}" ]; then
+          buildDetails="${{ github.event.inputs.ZIP_NAME }}"
+        else
+          buildDetails="$CODENAME-$KERNEL_VER-$gitsha1"
+        fi
         echo "currDate=$(date)" >> $GITHUB_OUTPUT
         echo "kernelVer=$KERNEL_VER" >> $GITHUB_OUTPUT
         echo "gitsha=$gitsha1" >> $GITHUB_OUTPUT
