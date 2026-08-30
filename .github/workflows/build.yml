@@ -39,6 +39,14 @@ on:
         description: 'Enable KCFLAGS=-w'
         type: boolean
         default: true
+      SELINUX:
+        description: 'SELinux mode'
+        required: true
+        default: 'enforcing'
+        type: choice
+        options:
+          - enforcing
+          - permissive
 
 jobs:
   build:
@@ -108,7 +116,8 @@ jobs:
         if [ ! -d ~/.ccache ]; then
           mkdir -p ~/.ccache
         fi
-        # Handel KSU
+        
+        # Handle KSU
         if [[ "$KSU" == "true" ]]; then
           device_defconfig="arch/arm64/configs/${{ inputs.DEFCONFIG }}"
           curl -LSs "https://raw.githubusercontent.com/blxyzY/KernelSU/xxksu/kernel/setup.sh" | bash -s "${{ inputs.KSU_BRANCH }}"
@@ -124,6 +133,34 @@ jobs:
             exit 1
           fi
         fi
+        
+        # Handle SELinux
+        device_defconfig="arch/arm64/configs/${{ inputs.DEFCONFIG }}"
+        if [[ "${{ inputs.SELINUX }}" == "permissive" ]]; then
+          echo "Mengonfigurasi kernel ke SELinux Permissive..."
+          sed -i 's/CONFIG_CMDLINE=""/CONFIG_CMDLINE="androidboot.selinux=permissive"/' "$device_defconfig"
+          sed -i 's/# CONFIG_SECURITY_SELINUX_DEVELOP is not set/CONFIG_SECURITY_SELINUX_DEVELOP=y/' "$device_defconfig"
+          sed -i 's/CONFIG_SECURITY_SELINUX_ALWAYS_ENFORCE=y/# CONFIG_SECURITY_SELINUX_ALWAYS_ENFORCE is not set/' "$device_defconfig" 2>/dev/null || true
+          if grep -q "CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE" "$device_defconfig"; then
+            sed -i 's/# CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE is not set/CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE=y/' "$device_defconfig"
+          else
+            echo "CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE=y" >> "$device_defconfig"
+          fi
+          sed -i 's/CONFIG_INTEGRITY=y/# CONFIG_INTEGRITY is not set/' "$device_defconfig"
+          sed -i 's/CONFIG_SECURITY_DEFEX=y/# CONFIG_SECURITY_DEFEX is not set/' "$device_defconfig"
+          sed -i 's/CONFIG_PROCA=y/# CONFIG_PROCA is not set/' "$device_defconfig"
+          sed -i 's/CONFIG_FIVE=y/# CONFIG_FIVE is not set/' "$device_defconfig"
+          
+          echo "SELinux: Permissive mode configured"
+        else
+          echo "Mengonfigurasi kernel ke SELinux Enforcing..."
+          sed -i 's/CONFIG_CMDLINE="androidboot.selinux=permissive"/CONFIG_CMDLINE=""/' "$device_defconfig"
+          sed -i 's/CONFIG_SECURITY_SELINUX_DEVELOP=y/# CONFIG_SECURITY_SELINUX_DEVELOP is not set/' "$device_defconfig"
+          sed -i 's/CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE=y/# CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE is not set/' "$device_defconfig"
+          
+          echo "SELinux: Enforcing mode configured"
+        fi
+        
         bash ../build.sh
 
     - name: Upload kernel artifacts
