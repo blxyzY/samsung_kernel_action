@@ -99,7 +99,7 @@ jobs:
         UPDATE_TOOLCHAINS: ${{ github.event.inputs.UPDATE_TOOLCHAIN }}
       run: bash ./build.sh --fetch-toolchains
 
-    - name: Build Kernel
+    - name: ⚡ Build Kernel
       if: github.event.inputs.UPDATE_TOOLCHAIN != 'true'
       env:
         TG_TOKEN: ${{ secrets.BOT_TOKEN }}
