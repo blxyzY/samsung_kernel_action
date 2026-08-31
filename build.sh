@@ -13,7 +13,6 @@ GCC_DIR="$HOME/androidcc"
 OUT_DIR="$(pwd)/out"
 KCFLAGS_W=${KCFLAGS_W:-"false"}
 BUILD_STOCK=${BUILD_STOCK:-"false"}
-SELINUX=${SELINUX:-"enforcing"}
 
 export TERM=xterm
 red='\033[0;31m'
@@ -36,8 +35,6 @@ send_telegram() {
         msg "Telegram credentials missing. Skipping upload."
         return
     fi
-
-Build done in ${time} minutes"
 
     msg "Uploading to Telegram..."
     curl -s -F document=@$file \
@@ -164,7 +161,6 @@ esac
 
 msg "Using defconfig: $DEFCONFIG"
 msg "LTO: ${LTO:-none}"
-msg "SELinux: ${SELINUX:-enforcing}"
 
 export KBUILD_BUILD_USER=$USER
 export KBUILD_BUILD_HOST=$HOSTNAME
