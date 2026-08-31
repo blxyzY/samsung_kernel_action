@@ -159,7 +159,6 @@ jobs:
           else
             echo "CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE=y" >> "$device_defconfig"
           fi
-          sed -i 's/CONFIG_INTEGRITY=y/# CONFIG_INTEGRITY is not set/' "$device_defconfig"
           sed -i 's/CONFIG_SECURITY_DEFEX=y/# CONFIG_SECURITY_DEFEX is not set/' "$device_defconfig"
           sed -i 's/CONFIG_PROCA=y/# CONFIG_PROCA is not set/' "$device_defconfig"
           sed -i 's/CONFIG_FIVE=y/# CONFIG_FIVE is not set/' "$device_defconfig"
@@ -169,7 +168,6 @@ jobs:
           echo "🔒 Configuring kernel to SELinux Enforcing..."
           sed -i 's/CONFIG_CMDLINE="androidboot.selinux=permissive"/CONFIG_CMDLINE=""/' "$device_defconfig"
           sed -i 's/CONFIG_SECURITY_SELINUX_DEVELOP=y/# CONFIG_SECURITY_SELINUX_DEVELOP is not set/' "$device_defconfig"
-          sed -i 's/CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE=y/# CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE is not set/' "$device_defconfig"
           
           echo "✅ SELinux: Enforcing mode configured 🔒"
         fi
