@@ -166,7 +166,6 @@ jobs:
           echo "✅ SELinux: Permissive mode configured 🔓"
         else
           echo "🔒 Configuring kernel to SELinux Enforcing..."
-          sed -i 's/CONFIG_CMDLINE="androidboot.selinux=permissive"/CONFIG_CMDLINE=""/' "$device_defconfig"
           sed -i 's/CONFIG_SECURITY_SELINUX_DEVELOP=y/# CONFIG_SECURITY_SELINUX_DEVELOP is not set/' "$device_defconfig"
           
           echo "✅ SELinux: Enforcing mode configured 🔒"
