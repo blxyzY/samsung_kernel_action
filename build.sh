@@ -37,13 +37,6 @@ send_telegram() {
         return
     fi
 
-    local device="${DEVICE_TARGET:-unknown}"
-    local selinux_mode="${SELINUX:-enforcing}"
-    local clang_ver=$($TC_DIR/bin/clang --version 2>/dev/null | head -1 | cut -d'(' -f1 | sed 's/[[:space:]]*$//' || echo "unknown")
-    local msg_bar="Device: ${device}
-SELinux: ${selinux_mode}
-MD5: ${md5}
-Compiler: ${clang_ver}
 Build done in ${time} minutes"
 
     msg "Uploading to Telegram..."
