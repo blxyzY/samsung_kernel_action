@@ -31,7 +31,14 @@ on:
         options:
           - none
           - thin
-          - full
+      SELINUX:
+        description: '🔒 SELinux mode'
+        required: true
+        default: 'enforcing'
+        type: choice
+        options:
+          - enforcing
+          - permissive
       KSU:
         description: '🔑 Add KernelSU support'
         type: boolean
@@ -44,14 +51,6 @@ on:
         description: '🛡️ Enable KCFLAGS=-w'
         type: boolean
         default: true
-      SELINUX:
-        description: '🔒 SELinux mode'
-        required: true
-        default: 'enforcing'
-        type: choice
-        options:
-          - enforcing
-          - permissive
 
 jobs:
   build:
