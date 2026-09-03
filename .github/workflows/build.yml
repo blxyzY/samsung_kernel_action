@@ -137,7 +137,7 @@ jobs:
           echo "CONFIG_KSU_DEBUG=n" >> $device_defconfig
           echo "CONFIG_KSU_TOOLKIT=n" >> $device_defconfig
           echo "CONFIG_KSU_EXTRAS=n" >> $device_defconfig
-          echo "CONFIG_KSU_TAMPER_SYSCALL_TABLE=y" >> $device_defconfig
+          echo "CONFIG_KSU_TAMPER_SYSCALL_TABLE=n" >> $device_defconfig
           
           if ! grep -q "CONFIG_KSU_TAMPER_SYSCALL_TABLE" "$device_defconfig"; then
             echo "❌ Fail! Failed to append defconfig"
