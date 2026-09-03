@@ -8,7 +8,7 @@ HOSTNAME="norprjkt-lab"
 DEVICE_TARGET=${DEVICE_TARGET:-"A235F"}
 DEFCONFIG=${DEFCONFIG:-"a23_eur_open_defconfig"}
 LTO=${LTO:-"none"}
-CLANG_VERSION=${CLANG_VERSION:-"neutron-2026"}
+CLANG_VERSION=${CLANG_VERSION:-"neutron-clang23"}
 TC_DIR="$HOME/neutron-clang"
 GCC_DIR="$HOME/androidcc"
 OUT_DIR="$(pwd)/out"
@@ -57,7 +57,7 @@ setup_deps() {
     
     echo "INFO: Installing dependencies..."
     sudo apt install -y --no-install-recommends \
-        bc bison ccache cpio curl flex git libssl-dev lz4 perl python-is-python3 tar wget
+        bc bison ccache cpio curl flex git libssl-dev lz4 perl python-is-python3 tar wget zstd
     
     echo "INFO: Dependencies installation completed!"
 }
@@ -65,58 +65,134 @@ setup_deps() {
 _setup_toolchain() {
     msg "Downloading Clang: $CLANG_VERSION ..."
     
+    # Clean existing directory
+    rm -rf "$TC_DIR"
+    mkdir -p "$TC_DIR"
+    
     case "$CLANG_VERSION" in
         "neutron-clang23")
             wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/26052026/neutron-clang-26052026.tar.zst -O /tmp/clang.tar.zst
+            msg "Extracting Neutron Clang 23..."
+            tar -xf /tmp/clang.tar.zst -C "$TC_DIR"
             ;;
         "aosp-22")
             wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r584948.tar.gz -O /tmp/clang.tar.gz
+            msg "Extracting AOSP Clang 22..."
+            mkdir -p "$TC_DIR/temp"
+            tar -xf /tmp/clang.tar.gz -C "$TC_DIR/temp"
+            # Find and move clang directory
+            if [ -d "$TC_DIR/temp/clang-r584948" ]; then
+                mv "$TC_DIR/temp/clang-r584948"/* "$TC_DIR/"
+            elif [ -d "$TC_DIR/temp/clang-r584948/bin" ]; then
+                mv "$TC_DIR/temp/clang-r584948"/* "$TC_DIR/"
+            else
+                mv "$TC_DIR/temp"/* "$TC_DIR/"
+            fi
+            rm -rf "$TC_DIR/temp"
             ;;
         "aosp-23")
             wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r614150.tar.gz -O /tmp/clang.tar.gz
+            msg "Extracting AOSP Clang 23..."
+            mkdir -p "$TC_DIR/temp"
+            tar -xf /tmp/clang.tar.gz -C "$TC_DIR/temp"
+            if [ -d "$TC_DIR/temp/clang-r614150" ]; then
+                mv "$TC_DIR/temp/clang-r614150"/* "$TC_DIR/"
+            elif [ -d "$TC_DIR/temp/clang-r614150/bin" ]; then
+                mv "$TC_DIR/temp/clang-r614150"/* "$TC_DIR/"
+            else
+                mv "$TC_DIR/temp"/* "$TC_DIR/"
+            fi
+            rm -rf "$TC_DIR/temp"
             ;;
         "aosp-21")
             wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r510928.tar.gz -O /tmp/clang.tar.gz
+            msg "Extracting AOSP Clang 21..."
+            mkdir -p "$TC_DIR/temp"
+            tar -xf /tmp/clang.tar.gz -C "$TC_DIR/temp"
+            if [ -d "$TC_DIR/temp/clang-r510928" ]; then
+                mv "$TC_DIR/temp/clang-r510928"/* "$TC_DIR/"
+            else
+                mv "$TC_DIR/temp"/* "$TC_DIR/"
+            fi
+            rm -rf "$TC_DIR/temp"
             ;;
         "aosp-20")
-            wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r547379.tar.gz -O /tmp/clang.tar.zst
+            wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r547379.tar.gz -O /tmp/clang.tar.gz
+            msg "Extracting AOSP Clang 20..."
+            mkdir -p "$TC_DIR/temp"
+            tar -xf /tmp/clang.tar.gz -C "$TC_DIR/temp"
+            if [ -d "$TC_DIR/temp/clang-r547379" ]; then
+                mv "$TC_DIR/temp/clang-r547379"/* "$TC_DIR/"
+            else
+                mv "$TC_DIR/temp"/* "$TC_DIR/"
+            fi
+            rm -rf "$TC_DIR/temp"
             ;;
         "aosp-12")
             wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/bd96dfe349c962681f0e5388af874c771ef96670/clang-r416183b.tar.gz -O /tmp/clang.tar.gz
+            msg "Extracting AOSP Clang 12..."
+            mkdir -p "$TC_DIR/temp"
+            tar -xf /tmp/clang.tar.gz -C "$TC_DIR/temp"
+            if [ -d "$TC_DIR/temp/clang-r416183b" ]; then
+                mv "$TC_DIR/temp/clang-r416183b"/* "$TC_DIR/"
+            else
+                mv "$TC_DIR/temp"/* "$TC_DIR/"
+            fi
+            rm -rf "$TC_DIR/temp"
             ;;
         *)
-            msg "Unknown CLANG_VERSION: $CLANG_VERSION, using neutron-clang-23 as default"
+            msg "Unknown CLANG_VERSION: $CLANG_VERSION, using neutron-clang23 as default"
             wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/26052026/neutron-clang-26052026.tar.zst -O /tmp/clang.tar.zst
+            msg "Extracting Neutron Clang 23..."
+            tar -xf /tmp/clang.tar.zst -C "$TC_DIR"
             ;;
     esac
     
-    [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
-    
-    # Extract based on file extension
-    if [[ "$CLANG_VERSION" == *"aosp"* ]] || [[ "$CLANG_VERSION" == "google" ]]; then
-        tar -xvf /tmp/clang.tar.gz -C "$TC_DIR" --strip-components=1
+    # Verify Clang installation
+    if [ -f "$TC_DIR/bin/clang" ]; then
+        msg "✅ Clang installed successfully: $($TC_DIR/bin/clang --version | head -n1)"
     else
-        tar -xvf /tmp/clang.tar.zst -C "$TC_DIR"
+        msg "⚠️ Clang not found in expected location, searching..."
+        # Try to find clang in subdirectories
+        CLANG_PATH=$(find "$TC_DIR" -name "clang" -type f 2>/dev/null | head -n1)
+        if [ -n "$CLANG_PATH" ]; then
+            CLANG_DIR=$(dirname "$CLANG_PATH")
+            msg "Found Clang at: $CLANG_PATH"
+            # Create bin directory if not exists
+            mkdir -p "$TC_DIR/bin"
+            # Create symlink for clang
+            ln -sf "$CLANG_PATH" "$TC_DIR/bin/clang"
+            # Also link clang++
+            CLANGPP_PATH=$(find "$TC_DIR" -name "clang++" -type f 2>/dev/null | head -n1)
+            if [ -n "$CLANGPP_PATH" ]; then
+                ln -sf "$CLANGPP_PATH" "$TC_DIR/bin/clang++"
+            fi
+            msg "✅ Clang symlinks created successfully!"
+            msg "Clang version: $($TC_DIR/bin/clang --version | head -n1)"
+        else
+            error "❌ Clang installation failed! Clang binary not found in $TC_DIR"
+        fi
     fi
     
     msg "Downloading GCC (AndroidCC) ..."
+    if [ -d "$GCC_DIR" ]; then
+        rm -rf "$GCC_DIR"
+    fi
+    
     git clone --depth=1 https://github.com/blxyzY/toolchain -b androidcc-4.9 "$GCC_DIR" 2>/dev/null || \
     git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b master "$GCC_DIR"
     
-    cd "$GCC_DIR/bin"
-    if [ ! -f "aarch64-linux-android-gcc" ]; then
-        ln -sf "$(ls | grep aarch64-linux-android-gcc | head -1)" aarch64-linux-android-gcc
-    fi
-    cd ../..
-    
-    # Verify Clang installation
-    if [ -f "$TC_DIR/bin/clang" ]; then
-        msg "Clang installed successfully: $($TC_DIR/bin/clang --version | head -n1)"
+    # Verify GCC installation
+    if [ -f "$GCC_DIR/bin/aarch64-linux-android-gcc" ]; then
+        msg "✅ GCC installed successfully"
     else
-        error "Clang installation failed!"
+        error "❌ GCC installation failed!"
     fi
     
-    msg "Toolchain extracted"
+    # Clean up temp files
+    rm -f /tmp/clang.tar.* 2>/dev/null || true
+    
+    msg "✅ Toolchain setup completed!"
 }
 
 setup_toolchain() {
@@ -131,7 +207,15 @@ setup_toolchain() {
     if [ ! -d "$TC_DIR" ] || [ ! -d "$GCC_DIR" ]; then
         _setup_toolchain
     else
-        msg "Toolchain already exist"
+        msg "Toolchain already exists"
+        # Verify existing toolchain
+        if [ -f "$TC_DIR/bin/clang" ]; then
+            msg "Existing Clang: $($TC_DIR/bin/clang --version | head -n1)"
+        else
+            msg "Toolchain corrupted, re-downloading..."
+            rm -rf "$TC_DIR"
+            _setup_toolchain
+        fi
     fi
     exit 0
 }
