@@ -80,10 +80,7 @@ _setup_toolchain() {
             msg "Extracting AOSP Clang 22..."
             mkdir -p "$TC_DIR/temp"
             tar -xf /tmp/clang.tar.gz -C "$TC_DIR/temp"
-            # Find and move clang directory
             if [ -d "$TC_DIR/temp/clang-r584948" ]; then
-                mv "$TC_DIR/temp/clang-r584948"/* "$TC_DIR/"
-            elif [ -d "$TC_DIR/temp/clang-r584948/bin" ]; then
                 mv "$TC_DIR/temp/clang-r584948"/* "$TC_DIR/"
             else
                 mv "$TC_DIR/temp"/* "$TC_DIR/"
@@ -96,8 +93,6 @@ _setup_toolchain() {
             mkdir -p "$TC_DIR/temp"
             tar -xf /tmp/clang.tar.gz -C "$TC_DIR/temp"
             if [ -d "$TC_DIR/temp/clang-r614150" ]; then
-                mv "$TC_DIR/temp/clang-r614150"/* "$TC_DIR/"
-            elif [ -d "$TC_DIR/temp/clang-r614150/bin" ]; then
                 mv "$TC_DIR/temp/clang-r614150"/* "$TC_DIR/"
             else
                 mv "$TC_DIR/temp"/* "$TC_DIR/"
@@ -153,16 +148,12 @@ _setup_toolchain() {
         msg "✅ Clang installed successfully: $($TC_DIR/bin/clang --version | head -n1)"
     else
         msg "⚠️ Clang not found in expected location, searching..."
-        # Try to find clang in subdirectories
         CLANG_PATH=$(find "$TC_DIR" -name "clang" -type f 2>/dev/null | head -n1)
         if [ -n "$CLANG_PATH" ]; then
             CLANG_DIR=$(dirname "$CLANG_PATH")
             msg "Found Clang at: $CLANG_PATH"
-            # Create bin directory if not exists
             mkdir -p "$TC_DIR/bin"
-            # Create symlink for clang
             ln -sf "$CLANG_PATH" "$TC_DIR/bin/clang"
-            # Also link clang++
             CLANGPP_PATH=$(find "$TC_DIR" -name "clang++" -type f 2>/dev/null | head -n1)
             if [ -n "$CLANGPP_PATH" ]; then
                 ln -sf "$CLANGPP_PATH" "$TC_DIR/bin/clang++"
@@ -179,14 +170,49 @@ _setup_toolchain() {
         rm -rf "$GCC_DIR"
     fi
     
-    git clone --depth=1 https://github.com/blxyzY/toolchain -b androidcc-4.9 "$GCC_DIR" 2>/dev/null || \
-    git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b master "$GCC_DIR"
+    # Try multiple GCC sources
+    msg "Attempting to download GCC from blxyzY..."
+    if git clone --depth=1 https://github.com/blxyzY/toolchain -b androidcc-4.9 "$GCC_DIR" 2>/dev/null; then
+        msg "✅ GCC downloaded from blxyzY"
+    else
+        msg "Failed to download from blxyzY, trying Google AOSP..."
+        if git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b master "$GCC_DIR" 2>/dev/null; then
+            msg "✅ GCC downloaded from Google AOSP"
+        else
+            msg "Failed to download from Google AOSP, trying alternative source..."
+            if git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 -b lineage-21.0 "$GCC_DIR" 2>/dev/null; then
+                msg "✅ GCC downloaded from LineageOS"
+            else
+                error "❌ All GCC download attempts failed!"
+            fi
+        fi
+    fi
+    
+    # Create symlink for GCC
+    cd "$GCC_DIR/bin"
+    if [ ! -f "aarch64-linux-android-gcc" ]; then
+        GCC_BIN=$(ls | grep "aarch64-linux-android-gcc" | head -1)
+        if [ -n "$GCC_BIN" ]; then
+            ln -sf "$GCC_BIN" aarch64-linux-android-gcc
+            msg "Created symlink for aarch64-linux-android-gcc"
+        fi
+    fi
+    cd ../..
     
     # Verify GCC installation
     if [ -f "$GCC_DIR/bin/aarch64-linux-android-gcc" ]; then
-        msg "✅ GCC installed successfully"
+        msg "✅ GCC installed successfully: $($GCC_DIR/bin/aarch64-linux-android-gcc --version | head -n1)"
     else
-        error "❌ GCC installation failed!"
+        # Try to find GCC binary
+        GCC_PATH=$(find "$GCC_DIR" -name "aarch64-linux-android-gcc" -type f 2>/dev/null | head -n1)
+        if [ -n "$GCC_PATH" ]; then
+            GCC_BIN_DIR=$(dirname "$GCC_PATH")
+            mkdir -p "$GCC_DIR/bin"
+            ln -sf "$GCC_PATH" "$GCC_DIR/bin/aarch64-linux-android-gcc"
+            msg "✅ GCC symlink created from: $GCC_PATH"
+        else
+            error "❌ GCC installation failed! No GCC binary found."
+        fi
     fi
     
     # Clean up temp files
@@ -209,11 +235,12 @@ setup_toolchain() {
     else
         msg "Toolchain already exists"
         # Verify existing toolchain
-        if [ -f "$TC_DIR/bin/clang" ]; then
+        if [ -f "$TC_DIR/bin/clang" ] && [ -f "$GCC_DIR/bin/aarch64-linux-android-gcc" ]; then
             msg "Existing Clang: $($TC_DIR/bin/clang --version | head -n1)"
+            msg "Existing GCC: $($GCC_DIR/bin/aarch64-linux-android-gcc --version | head -n1)"
         else
             msg "Toolchain corrupted, re-downloading..."
-            rm -rf "$TC_DIR"
+            rm -rf "$TC_DIR" "$GCC_DIR"
             _setup_toolchain
         fi
     fi
@@ -294,6 +321,24 @@ export LLVM_IAS=1
 export LLVM=1
 export CROSS_COMPILE="$GCC_DIR/bin/aarch64-linux-android-"
 export CLANG_TRIPLE="aarch64-linux-gnu-"
+
+# Verify toolchain paths before build
+msg "Verifying toolchain paths..."
+if [ ! -d "$TC_DIR" ]; then
+    error "Clang directory not found at: $TC_DIR"
+fi
+if [ ! -d "$GCC_DIR" ]; then
+    error "GCC directory not found at: $GCC_DIR"
+fi
+if [ ! -f "$TC_DIR/bin/clang" ]; then
+    error "Clang binary not found at: $TC_DIR/bin/clang"
+fi
+if [ ! -f "$GCC_DIR/bin/aarch64-linux-android-gcc" ]; then
+    error "GCC binary not found at: $GCC_DIR/bin/aarch64-linux-android-gcc"
+fi
+
+msg "Clang: $($TC_DIR/bin/clang --version | head -n1)"
+msg "GCC: $($GCC_DIR/bin/aarch64-linux-android-gcc --version | head -n1)"
 
 msg "KCFLAGS=-w is $KCFLAGS_W"
 [ "$KCFLAGS_W" = "true" ] && export KCFLAGS="-w"
