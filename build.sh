@@ -62,8 +62,8 @@ setup_deps() {
 }
 
 _setup_toolchain() {
-    msg "Downloading Neutron Clang 24 ..."
-    wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/30072026/neutron-clang-30072026.tar.zst -O /tmp/neutron.tar.zst
+    msg "Downloading Neutron Clang 23 ..."
+    wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/26052026/neutron-clang-26052026.tar.zst -O /tmp/neutron.tar.zst
     [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
     tar -xvf /tmp/neutron.tar.zst -C "$TC_DIR"
     
