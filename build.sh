@@ -8,6 +8,7 @@ HOSTNAME="norprjkt-lab"
 DEVICE_TARGET=${DEVICE_TARGET:-"A235F"}
 DEFCONFIG=${DEFCONFIG:-"a23_eur_open_defconfig"}
 LTO=${LTO:-"none"}
+CLANG_VERSION=${CLANG_VERSION:-"neutron-2026"}
 TC_DIR="$HOME/neutron-clang"
 GCC_DIR="$HOME/androidcc"
 OUT_DIR="$(pwd)/out"
@@ -62,14 +63,41 @@ setup_deps() {
 }
 
 _setup_toolchain() {
-    msg "Downloading Neutron Clang 23 ..."
-    wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/26052026/neutron-clang-26052026.tar.zst -O /tmp/neutron.tar.zst
-    # Clang AOSP 22
-    #wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r584948.tar.gz -O /tmp/neutron.tar.zst
-    # Clang AOSP 21
-    #wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r584948.tar.gz
+    msg "Downloading Clang: $CLANG_VERSION ..."
+    
+    case "$CLANG_VERSION" in
+        "neutron-clang23")
+            wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/26052026/neutron-clang-26052026.tar.zst -O /tmp/clang.tar.zst
+            ;;
+        "aosp-22")
+            wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r584948.tar.gz -O /tmp/clang.tar.gz
+            ;;
+        "aosp-23")
+            wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r614150.tar.gz -O /tmp/clang.tar.gz
+            ;;
+        "aosp-21")
+            wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r510928.tar.gz -O /tmp/clang.tar.gz
+            ;;
+        "aosp-20")
+            wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r547379.tar.gz -O /tmp/clang.tar.zst
+            ;;
+        "aosp-12")
+            wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/bd96dfe349c962681f0e5388af874c771ef96670/clang-r416183b.tar.gz -O /tmp/clang.tar.gz
+            ;;
+        *)
+            msg "Unknown CLANG_VERSION: $CLANG_VERSION, using neutron-clang-23 as default"
+            wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/26052026/neutron-clang-26052026.tar.zst -O /tmp/clang.tar.zst
+            ;;
+    esac
+    
     [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
-    tar -xvf /tmp/neutron.tar.zst -C "$TC_DIR"
+    
+    # Extract based on file extension
+    if [[ "$CLANG_VERSION" == *"aosp"* ]] || [[ "$CLANG_VERSION" == "google" ]]; then
+        tar -xvf /tmp/clang.tar.gz -C "$TC_DIR" --strip-components=1
+    else
+        tar -xvf /tmp/clang.tar.zst -C "$TC_DIR"
+    fi
     
     msg "Downloading GCC (AndroidCC) ..."
     git clone --depth=1 https://github.com/blxyzY/toolchain -b androidcc-4.9 "$GCC_DIR" 2>/dev/null || \
@@ -80,6 +108,13 @@ _setup_toolchain() {
         ln -sf "$(ls | grep aarch64-linux-android-gcc | head -1)" aarch64-linux-android-gcc
     fi
     cd ../..
+    
+    # Verify Clang installation
+    if [ -f "$TC_DIR/bin/clang" ]; then
+        msg "Clang installed successfully: $($TC_DIR/bin/clang --version | head -n1)"
+    else
+        error "Clang installation failed!"
+    fi
     
     msg "Toolchain extracted"
 }
@@ -165,6 +200,7 @@ esac
 
 msg "Using defconfig: $DEFCONFIG"
 msg "LTO: ${LTO:-none}"
+msg "Clang version: $CLANG_VERSION"
 
 export KBUILD_BUILD_USER=$USER
 export KBUILD_BUILD_HOST=$HOSTNAME
