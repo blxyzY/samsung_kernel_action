@@ -39,6 +39,7 @@ on:
         type: choice
         options:
           - neutron-clang-23
+          - aosp-23
           - aosp-22
           - aosp-21
           - aosp-20
