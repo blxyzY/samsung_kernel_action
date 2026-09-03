@@ -35,10 +35,10 @@ on:
       CLANG_VERSION:
         description: '🔧 Clang'
         required: true
-        default: 'neutron-clang-23'
+        default: 'neutron-clang23'
         type: choice
         options:
-          - neutron-clang-23
+          - neutron-clang23
           - aosp-23
           - aosp-22
           - aosp-21
