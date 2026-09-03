@@ -64,7 +64,10 @@ setup_deps() {
 _setup_toolchain() {
     msg "Downloading Neutron Clang 23 ..."
     wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/26052026/neutron-clang-26052026.tar.zst -O /tmp/neutron.tar.zst
+    # Clang AOSP 22
     #wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r584948.tar.gz -O /tmp/neutron.tar.zst
+    # Clang AOSP 21
+    #wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r584948.tar.gz
     [ ! -d "$TC_DIR" ] && mkdir -p "$TC_DIR"
     tar -xvf /tmp/neutron.tar.zst -C "$TC_DIR"
     
