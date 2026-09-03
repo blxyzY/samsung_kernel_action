@@ -72,7 +72,7 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ~/neutron-clang
-        key: neutron-clang-23
+        key: neutron-clang-AOSP
 
     - name: 🚀 Cache ccache
       uses: actions/cache@v5
