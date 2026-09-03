@@ -1,4 +1,5 @@
 name: Build Kernel
+
 on:
   workflow_dispatch:
     inputs:
@@ -31,6 +32,17 @@ on:
         options:
           - none
           - thin
+      CLANG_VERSION:
+        description: '🔧 Clang'
+        required: true
+        default: 'neutron-clang-23'
+        type: choice
+        options:
+          - neutron-clang-23
+          - aosp-22
+          - aosp-21
+          - aosp-20
+          - aosp-12
       SELINUX:
         description: '🔒 SELinux mode'
         required: true
@@ -72,7 +84,10 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ~/neutron-clang
-        key: neutron-clang-AOSP
+        key: clang-${{ github.event.inputs.CLANG_VERSION }}-${{ github.sha }}
+        restore-keys: |
+          clang-${{ github.event.inputs.CLANG_VERSION }}-
+          clang-
 
     - name: 🚀 Cache ccache
       uses: actions/cache@v5
@@ -106,6 +121,7 @@ jobs:
       if: ${{ steps.cache-toolchain.outputs.cache-hit != 'true' || github.event.inputs.UPDATE_TOOLCHAIN == 'true' }}
       env:
         UPDATE_TOOLCHAINS: ${{ github.event.inputs.UPDATE_TOOLCHAIN }}
+        CLANG_VERSION: ${{ github.event.inputs.CLANG_VERSION }}
       run: bash ./build.sh --fetch-toolchains
 
     - name: ⚡ Build Kernel
@@ -119,6 +135,7 @@ jobs:
         LTO: ${{ github.event.inputs.LTO }}
         KSU: ${{ github.event.inputs.KSU }}
         SELINUX: ${{ github.event.inputs.SELINUX }}
+        CLANG_VERSION: ${{ github.event.inputs.CLANG_VERSION }}
         CI_ZIPNAME: "${{ steps.buildKernel.outputs.buildDetails }}.zip"
         KCFLAGS_W: "${{ github.event.inputs.KCFLAGS_W }}"
       run: |
