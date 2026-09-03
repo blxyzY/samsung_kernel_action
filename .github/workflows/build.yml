@@ -131,7 +131,7 @@ jobs:
         if [[ "$KSU" == "true" ]]; then
           device_defconfig="arch/arm64/configs/${{ inputs.DEFCONFIG }}"
           echo "🔑 Adding KernelSU support..."
-          curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/xxksu/kernel/setup.sh" | bash -s "${{ inputs.KSU_BRANCH }}"
+          curl -LSs "https://raw.githubusercontent.com/blxyzY/KernelSU/xxksu/kernel/setup.sh" | bash -s "${{ inputs.KSU_BRANCH }}"
           
           echo "CONFIG_KSU=y" >> $device_defconfig
           echo "CONFIG_KSU_DEBUG=n" >> $device_defconfig
