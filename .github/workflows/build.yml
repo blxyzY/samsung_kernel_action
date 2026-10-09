@@ -236,7 +236,17 @@ jobs:
 
         echo "🚀 Starting kernel build..."
         bash ../build.sh
-
+    - name: 🔍 Find DTB and DTBO
+      if: always()
+      run: |
+        cd kernel_root
+        echo "=== DTB files ==="
+        find out/arch/arm64/boot -type f \( -name "*.dtb" -o -name "*.dtbo" \) -print
+        echo "=== DTB directories ==="
+        find out/arch/arm64/boot/dts -type d -print 2>/dev/null
+        echo "=== DTBO image ==="
+        find out/arch/arm64/boot -type f -name "dtbo.img" -print
+        
     - name: 📤 Upload kernel artifacts
       uses: actions/upload-artifact@v5
       with:
