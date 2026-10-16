@@ -19,8 +19,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  SOURCE_REPO: https://github.com/qwertswa/UN1CA.git
-  SOURCE_BRANCH: sixteen
+  SOURCE_REPO: https://github.com/Rezoss-Reza/UN1CA.git
+  SOURCE_BRANCH: lapanlima
   TARGET_REPO: github.com/blxyzY/ZEST1CA.git
   TARGET_BRANCH: sixteen
   CHUNK_SIZE: "200"
