@@ -22,7 +22,7 @@ env:
   SOURCE_REPO: https://github.com/Rezoss-Reza/UN1CA.git
   SOURCE_BRANCH: lapanlima
   TARGET_REPO: github.com/blxyzY/ZEST1CA.git
-  TARGET_BRANCH: sixteen
+  TARGET_BRANCH: lapanlima
   CHUNK_SIZE: "200"
 
 jobs:
