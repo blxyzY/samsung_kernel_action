@@ -1,0 +1,95 @@
+name: Sync UN1CA (branch sixteen)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Mode push"
+        type: choice
+        default: chunked
+        options:
+          - chunked
+          - nothin
+          - shallow
+  schedule:
+    - cron: "0 */6 * * *"
+
+concurrency:
+  group: sync-un1ca-sixteen
+  cancel-in-progress: false
+
+env:
+  SOURCE_REPO: https://github.com/qwertswa/UN1CA.git
+  SOURCE_BRANCH: sixteen
+  TARGET_REPO: github.com/blxyzY/ZEST1CA.git
+  TARGET_BRANCH: sixteen
+  CHUNK_SIZE: "200"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Siapkan git
+        run: |
+          git config --global http.postBuffer 1048576000
+          git config --global http.lowSpeedLimit 0
+          git config --global http.lowSpeedTime 999999
+          git config --global http.version HTTP/1.1
+          git config --global pack.threads 1
+          git config --global gc.auto 0
+
+      - name: Clone hanya branch sixteen
+        run: |
+          MODE="${{ github.event.inputs.mode || 'chunked' }}"
+          DEPTH=""
+          [ "$MODE" = "shallow" ] && DEPTH="--depth 1"
+          git clone --single-branch --branch "$SOURCE_BRANCH" $DEPTH "$SOURCE_REPO" un1ca
+          cd un1ca
+          git log -1 --oneline
+          echo "Jumlah commit: $(git rev-list --count HEAD)"
+          du -sh .git
+          echo "File > 50MB (jika ada):"
+          find . -path ./.git -prune -o -type f -size +50M -print
+          echo "Cek integritas objek..."
+          git fsck --connectivity-only 2>&1 | tail -5 || true
+
+      - name: Push ke repo tujuan
+        env:
+          PUSH_TOKEN: ${{ secrets.PUSH_TOKEN }}
+        run: |
+          set -u
+          MODE="${{ github.event.inputs.mode || 'chunked' }}"
+          cd un1ca
+          [ -z "$PUSH_TOKEN" ] && { echo "::error::Secret PUSH_TOKEN belum diisi"; exit 1; }
+          git remote add target "https://x-access-token:${PUSH_TOKEN}@${TARGET_REPO}"
+
+          retry() {
+            for i in 1 2 3 4; do
+              "$@" && return 0
+              echo "Gagal (percobaan $i), ulangi dalam $((i*15))s..."
+              sleep $((i*15))
+            done
+            return 1
+          }
+
+          REF="refs/heads/${TARGET_BRANCH}"
+
+          # Bersihkan sisa push yang gagal sebelumnya
+          git push target --delete "$TARGET_BRANCH" 2>/dev/null || true
+
+          if [ "$MODE" = "chunked" ]; then
+            TOTAL=$(git rev-list --count --first-parent "$SOURCE_BRANCH")
+            echo "Push bertahap, total $TOTAL commit, per $CHUNK_SIZE commit"
+            git rev-list --first-parent --reverse "$SOURCE_BRANCH" \
+              | awk -v n="$CHUNK_SIZE" 'NR%n==0' > chunks.txt
+            git rev-parse "$SOURCE_BRANCH" >> chunks.txt
+            sort -u -s -k1,1 chunks.txt >/dev/null
+            while read -r sha; do
+              echo ">>> push sampai $sha"
+              retry git push --no-thin --force target "${sha}:${REF}"
+            done < <(awk '!seen[$0]++' chunks.txt)
+          else
+            retry git push --no-thin --force target "refs/heads/${SOURCE_BRANCH}:${REF}"
+          fi
+          echo "Selesai"
