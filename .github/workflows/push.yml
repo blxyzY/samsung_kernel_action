@@ -19,10 +19,10 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  SOURCE_REPO: https://github.com/Rezoss-Reza/UN1CA.git
-  SOURCE_BRANCH: lapanlima
-  TARGET_REPO: github.com/blxyzY/ZEST1CA.git
-  TARGET_BRANCH: lapanlima
+  SOURCE_REPO: https://github.com/qwertswa/UN1CA.git
+  SOURCE_BRANCH: sixteen
+  TARGET_REPO: github.com/ProjectZest/ZEST1CA.git
+  TARGET_BRANCH: sixteen
   CHUNK_SIZE: "200"
 
 jobs:
@@ -86,7 +86,7 @@ jobs:
             git rev-parse "$SOURCE_BRANCH" >> chunks.txt
             sort -u -s -k1,1 chunks.txt >/dev/null
             while read -r sha; do
-              echo ">>> push sampai $sha"
+              echo ">>> push until $sha"
               retry git push --no-thin --force target "${sha}:${REF}"
             done < <(awk '!seen[$0]++' chunks.txt)
           else
