@@ -57,7 +57,7 @@ setup_deps() {
     
     echo "INFO: Installing dependencies..."
     sudo apt install -y --no-install-recommends \
-        bc bison ccache cpio curl flex git libssl-dev lz4 perl python-is-python3 tar wget zstd
+        bc bison ccache cpio curl dwarves flex git libelf-dev libssl-dev lz4 perl python-is-python3 tar wget zstd
     
     echo "INFO: Dependencies installation completed!"
 }
