@@ -52,8 +52,14 @@ jobs:
             DEBIAN_FRONTEND=noninteractive sudo apt install -yq \
               7zip attr ccache clang ffmpeg \
               libbrotli-dev libbz2-dev libgtest-dev libprotobuf-dev libunwind-dev libpcre2-dev \
-              libzstd-dev linux-modules-extra-$(uname -r) lld protobuf-compiler webp openjdk-17-jdk
-            sudo modprobe erofs f2fs
+              libzstd-dev lld protobuf-compiler webp openjdk-17-jdk
+            if ! (sudo modprobe erofs && sudo modprobe f2fs) 2> /dev/null; then
+              if apt-cache show "linux-modules-extra-$(uname -r)" > /dev/null 2>&1; then
+                sudo apt install -yq "linux-modules-extra-$(uname -r)"
+              fi
+              sudo modprobe erofs || echo "::warning::erofs kernel module unavailable, relying on fuse.erofs"
+              sudo modprobe f2fs || echo "::warning::f2fs kernel module unavailable"
+            fi
 
         - name: "Clone forked repo"
           run: |
