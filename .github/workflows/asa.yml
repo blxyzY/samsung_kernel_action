@@ -45,6 +45,9 @@ jobs:
           with:
             retain: 'compiler_cmake'
 
+        - name: Set up Rust toolchain
+          uses: dtolnay/rust-toolchain@stable
+        
         - name: "Set up dependencies"
           run: |
             sudo apt update
